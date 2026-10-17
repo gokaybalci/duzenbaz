@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "bench": "tsx scripts/bench.ts",
     "bench:big": "tsx scripts/big.ts 10000",
-    "bench:dagitmatik": "tsx scripts/dprg-bench.ts ../dagit/Örnekler",
+    "bench:dprg": "tsx scripts/dprg-bench.ts ../dagit/Örnekler",
     "check:subjects": "tsx scripts/subjects-check.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "desktop:build": "packaging/build.sh",

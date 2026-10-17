@@ -1,7 +1,6 @@
 # Düzenbaz — okul ders programı hazırlayıcı
 
-Windows ve Linux için hızlı bir masaüstü ders programı hazırlama uygulaması; Dagitmatik'e modern bir alternatif
-olarak geliştirildi. Sınıfları, öğretmenleri ve dersleri girersiniz; **hiçbir sınıf gününde boş saat olmayan**
+Windows ve Linux için hızlı bir masaüstü ders programı hazırlama uygulaması. Sınıfları, öğretmenleri ve dersleri girersiniz; **hiçbir sınıf gününde boş saat olmayan**
 (MEB kuralı), çakışmasız bir haftalık program çıkar. Sınıf ve öğretmen çizelgeleri, tüm sınıfların toplu
 görünümü ("çarşaf liste") ve günlük planlar yazdırılabilir.
 
@@ -73,7 +72,7 @@ Ekranlar soldaki menünün sırasını izler:
    öğretmenin diğer günleri kapatılır ve dersleri asla oraya konmaz. Öğretmenlere günlük en çok ders saati,
    haftalık en çok gün ve günlük en çok boş saat sınırı da verilebilir. Sınıflar gruplara ayrılabilir
    (seçmeli dersler, dil grupları). Dersliklerin bir adedi vardır (örneğin Spor Salonu × 2).
-3. **Tanımlı dersler** – Dagitmatik'teki gibi bir öğretmen seçin, bir ders seçin ve bu dersi verdiği
+3. **Tanımlı dersler** – bir öğretmen seçin, bir ders seçin ve bu dersi verdiği
    sınıfları (ya da grupları) işaretleyin; işaretlemek dersi ekler, işareti kaldırmak siler, başka bir
    öğretmenin girdiği sınıflarda o öğretmenin adı görünür. Birden çok sınıfın ya da öğretmenin birlikte
    girdiği dersler alttaki formla eklenir. Haftalık saatler bloklara bölünür (`2+2+1` = iki çift ders ve
@@ -115,7 +114,7 @@ her öğretmenin, dersliğin ve sınıfın uygun olduğu başlangıç saatleri. 
   kapalı saatler sayılmaz). Yumuşak: öğretmen boş saatleri ve bir dersin bloklarının art arda günlere
   düşmesi.
 
-Ölçümler, hepsi tek iş parçacığıyla (`npm run bench -- <ms> <sınıf> [öğretmen]`, `npm run bench:dagitmatik`):
+Ölçümler, hepsi tek iş parçacığıyla (`npm run bench -- <ms> <sınıf> [öğretmen]`, `npm run bench:dprg`):
 4, 12 ve 20 sınıf için, ayrıca örnek okulun izin verdiği en az öğretmen sayısıyla da 28 sınıf için yaklaşık
-5–7 saniyede, 0 sorun ve 0 boş sınıf saatiyle tam 35 saatlik haftalar. "Zor" olanlar dahil tüm Dagitmatik
+5–7 saniyede, 0 sorun ve 0 boş sınıf saatiyle tam 35 saatlik haftalar. "Zor" olanlar dahil tüm `.dprg`
 örnek projeleri çakışmasız çözülür.
