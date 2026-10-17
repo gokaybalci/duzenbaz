@@ -64,14 +64,14 @@ export function LessonsPage() {
             const h = loadOf(p, 'class', c.id)
             return (
               <button key={c.id} className={filter.kind === 'class' && filter.id === c.id ? 'active' : ''} onClick={() => choose({ kind: 'class', id: c.id })}>
-                <span className="dot" style={{ background: c.color }} />{c.name}<span className="meta">{h}h</span>
+                <span className="dot" style={{ background: c.color }} />{c.name}<span className="meta">{h} {t('h')}</span>
               </button>
             )
           })}
           <div className="hint" style={{ padding: '10px 10px 4px' }}>{t('Teachers')}</div>
           {p.teachers.map(c => (
             <button key={c.id} className={filter.kind === 'teacher' && filter.id === c.id ? 'active' : ''} onClick={() => choose({ kind: 'teacher', id: c.id })}>
-              <span className="dot" style={{ background: c.color }} />{c.name}<span className="meta">{loadOf(p, 'teacher', c.id)}h</span>
+              <span className="dot" style={{ background: c.color }} />{c.name}<span className="meta">{loadOf(p, 'teacher', c.id)} {t('h')}</span>
             </button>
           ))}
         </div>

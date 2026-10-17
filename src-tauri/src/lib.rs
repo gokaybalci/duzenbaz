@@ -23,7 +23,7 @@ struct OpenedFile {
     data: Vec<u8>,
 }
 
-const PROJECT_EXTS: [&str; 3] = ["duzenbaz", "json", "dprg"];
+const PROJECT_EXTS: [&str; 2] = ["duzenbaz", "json"];
 
 fn file_name(p: &Path) -> String {
     p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
@@ -37,8 +37,7 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
 
 fn read_project(path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
     let data = fs::read(&path).map_err(|e| e.to_string())?;
-    // An imported .dprg must be saved as a new Düzenbaz file, never over the .dprg.
-    *cur.0.lock().unwrap() = if has_ext(&path, &["dprg"]) { None } else { Some(path.clone()) };
+    *cur.0.lock().unwrap() = Some(path.clone());
     Ok(OpenedFile { name: file_name(&path), data })
 }
 
@@ -63,7 +62,7 @@ fn documents_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
 
 #[tauri::command]
 async fn open_project(app: tauri::AppHandle, cur: State<'_, CurrentFile>) -> Result<Option<OpenedFile>, String> {
-    let mut dlg = app.dialog().file().add_filter("Düzenbaz / Dağıtmatik", &PROJECT_EXTS);
+    let mut dlg = app.dialog().file().add_filter("Düzenbaz", &PROJECT_EXTS);
     if let Some(d) = documents_dir(&app) {
         dlg = dlg.set_directory(d);
     }

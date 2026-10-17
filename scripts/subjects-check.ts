@@ -2,11 +2,14 @@
 import assert from 'node:assert/strict'
 import { addMandatorySubjects, emptyProject, MANDATORY_SUBJECTS } from '../src/model'
 import { demoProject } from '../src/demo'
+import { migrate } from '../src/store'
 
 const p = emptyProject()
 assert.equal(addMandatorySubjects(p, 'ortaokul'), MANDATORY_SUBJECTS.ortaokul.length)
 assert.equal(addMandatorySubjects(p, 'ortaokul'), 0, 'second run adds nothing')
 assert.equal(new Set(p.subjects.map(s => s.name)).size, p.subjects.length)
+assert.ok(p.subjects.some(s => s.name === 'BİLİŞİM TEKNOLOJİLERİ VE YAZILIM'), 'names are upper-case with Turkish İ')
+assert.equal(migrate({ ...emptyProject(), teachers: [{ ...p.subjects[0], name: 'ayşe yılmaz', maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 }] }).teachers[0].name, 'AYŞE YILMAZ')
 
 const q = emptyProject()
 q.subjects.push({ ...p.subjects[0], id: 'x', name: ' MATEMATİK ' }, { ...p.subjects[0], id: 'y', name: 'İngilizce' })

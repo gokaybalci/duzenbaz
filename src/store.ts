@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import { produce, type Draft } from 'immer'
-import { emptyProject, resizeGrid, type Project } from './model'
+import { emptyProject, resizeGrid, upperName, type Project } from './model'
 
 const KEY = 'duzenbaz.project.v1'
 const MAX_HISTORY = 200
@@ -28,6 +28,7 @@ export function migrate(p: Partial<Project>): Project {
   for (const t of out.teachers) { t.maxPerDay ??= 0; t.maxDays ??= 0; t.maxGapsPerDay ??= -1 }
   for (const l of out.lessons) { l.link ??= ''; l.sameDayOk ??= false; l.roomIds ??= [] }
   out.placements ??= {}
+  for (const e of [...out.subjects, ...out.teachers]) e.name = upperName(e.name)
   out.strictClasses ??= true
   out.useRooms ??= out.rooms.length > 0 && out.lessons.some(l => l.roomIds.length > 0)
   return out

@@ -140,7 +140,7 @@ export function TimetablePage() {
                     return (
                       <div key={u.cardId} className={`tcard ${dragId === u.cardId ? 'dragging' : ''} ${selected === u.cardId ? 'selected' : ''}`} style={colorVars(cl.color, 0.14) as React.CSSProperties}
                         onPointerDown={e => startDrag(e, u.cardId, cl.title, cl.color)}>
-                        <b>{cl.title} · {u.len}h</b>
+                        <b>{cl.title} · {u.len} {t('h')}</b>
                         {cl.lines.map((x, i) => <span key={i}>{x}</span>)}
                       </div>
                     )

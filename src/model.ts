@@ -217,9 +217,12 @@ export function addMandatorySubjects(p: Project, type: SchoolType): number {
   const have = new Set(p.subjects.map(s => subjectKey(s.name)))
   const missing = list.filter(([name, , alt]) => ![name, ...alt].some(n => have.has(subjectKey(n))))
   for (const [name, short] of missing)
-    p.subjects.push({ id: newId('s'), name, short, color: pickColor(p.subjects.length), avail: fullGrid(p.days.length, p.periods.length) })
+    p.subjects.push({ id: newId('s'), name: upperName(name), short, color: pickColor(p.subjects.length), avail: fullGrid(p.days.length, p.periods.length) })
   return missing.length
 }
+
+/** Subject and teacher names are always written in capitals (Turkish rules: i → İ). */
+export const upperName = (s: string) => s.toLocaleUpperCase('tr')
 
 export const lessonHours = (l: Lesson) => l.split.reduce((a, b) => a + b, 0)
 

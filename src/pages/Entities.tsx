@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
 import { t } from '../i18n'
-import { newId, pickColor, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
+import { newId, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
 import { AvailabilityEditor, MiniGrid, Modal, toast } from '../ui'
@@ -16,7 +16,10 @@ const TITLES: Record<EntityKey, [string, string]> = {
 }
 const KIND: Partial<Record<EntityKey, Kind>> = { teachers: 'teacher', rooms: 'room', classes: 'class' }
 
+const UPPER: Partial<Record<EntityKey, true>> = { subjects: true, teachers: true }
+
 function makeEntity(key: EntityKey, p: Project, name: string, short?: string): Entity {
+  if (UPPER[key]) name = upperName(name)
   const base: Entity = {
     id: newId(key[0]), name, short: short || autoShort(name), color: pickColor(p[key].length + (key === 'teachers' ? 3 : 0)),
     avail: '1'.repeat(p.days.length * p.periods.length),
@@ -147,7 +150,12 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                 return (
                   <tr key={e.id}>
                     <td><input type="color" value={e.color} onChange={ev => edit(e.id, x => { x.color = ev.target.value }, 'color')} /></td>
-                    <td><input value={e.name} onChange={ev => edit(e.id, x => { x.name = ev.target.value }, 'name')} /></td>
+                    <td><input value={e.name} onChange={ev => {
+                      const el = ev.target, pos = el.selectionStart
+                      edit(e.id, x => { x.name = UPPER[entity] ? upperName(el.value) : el.value }, 'name')
+                      // Upper-casing replaces the value, which would move the caret to the end.
+                      if (UPPER[entity]) requestAnimationFrame(() => el.setSelectionRange(pos, pos))
+                    }} /></td>
                     <td><input value={e.short} onChange={ev => edit(e.id, x => { x.short = ev.target.value }, 'short')} /></td>
                     <td><MiniGrid value={e.avail} days={p.days.length} periods={p.periods.length} onClick={() => setAvailFor(e.id)} /></td>
                     {entity === 'teachers' && (() => {

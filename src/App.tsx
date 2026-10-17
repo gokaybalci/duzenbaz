@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
-import { readDprg } from './io/dprg'
 import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
@@ -64,9 +63,7 @@ export default function App() {
   const open = async (f: { name: string; arrayBuffer(): Promise<ArrayBuffer> }) => {
     try {
       const buf = await f.arrayBuffer()
-      let proj: Project
-      if (/\.dprg$/i.test(f.name)) proj = await readDprg(buf)
-      else proj = JSON.parse(new TextDecoder().decode(buf))
+      const proj: Project = JSON.parse(new TextDecoder().decode(buf))
       if (!proj.days || !proj.lessons) throw new Error(t('Not a timetable project file'))
       replaceProject(proj)
       toast(t('Opened {name}', { name: f.name }))
@@ -113,14 +110,14 @@ export default function App() {
           <Menu label={<><Icon n="folder" /> {t('File')} <Icon n="down" size={12} /></>}>
             {close => <>
               <button onClick={() => { close(); setNewOpen(true) }}><Icon n="file" /> {t('New project')}</button>
-              <button onClick={() => { close(); pickFile() }}><Icon n="open" /> {t('Open… (.duzenbaz or Dagitmatik .dprg)')}</button>
+              <button onClick={() => { close(); pickFile() }}><Icon n="open" /> {t('Open…')}</button>
               <button onClick={() => { close(); save(p, false) }}><Icon n="save" /> {t('Save')} <span className="hint">Ctrl+S</span></button>
               {native && <button onClick={() => { close(); save(p, true) }}><Icon n="save" /> {t('Save as…')} <span className="hint">Ctrl+Shift+S</span></button>}
               <hr />
               <button onClick={() => { close(); setDemoOpen(true) }}><Icon n="cap" /> {t('Load demo school')}</button>
             </>}
           </Menu>
-          <input ref={fileInput} type="file" accept=".duzenbaz,.json,.dprg,application/json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = '' }} />
+          <input ref={fileInput} type="file" accept=".duzenbaz,.json,application/json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = '' }} />
         </header>
         <main className="content">
           {page === 'start' && <StartPage go={setPage} openFile={pickFile} openDemo={() => setDemoOpen(true)} />}
@@ -270,7 +267,7 @@ function StartPage({ go, openFile, openDemo }: { go: (p: Page) => void; openFile
         <p style={{ margin: 0 }}>{native ? t('Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.') : t('Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.')}</p>
         <div className="row">
           <button className="btn primary" onClick={() => go('school')}>{t('Start setting up')}</button>
-          <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file / import from Dagitmatik')}</button>
+          <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file')}</button>
           <button className="btn" onClick={openDemo}><Icon n="cap" /> {t('Try the demo school')}</button>
         </div>
       </div>
