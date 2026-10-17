@@ -1,6 +1,6 @@
 import { demoProject } from '../src/demo'
 import { solve } from '../src/solver/engine'
-const p = demoProject(['A', 'B', 'C', 'D', 'E', 'F', 'G'], process.argv[3] !== 'norooms')
+const p = demoProject({ classes: 28, withRooms: process.argv[3] !== 'norooms' })
 // Science lab: give the big school 3 labs worth of capacity by dropping lab requirement for grades 5-6
 console.log('classes', p.classes.length, 'teachers', p.teachers.length, 'blocks', p.lessons.reduce((a, l) => a + l.split.length, 0))
 const t = performance.now()

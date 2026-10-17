@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './icons'
-import { demoProject } from './demo'
+import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
 import { readDprg } from './io/dprg'
 import { emptyProject, type Project } from './model'
@@ -12,9 +12,9 @@ import { SchoolPage } from './pages/School'
 import { SHEET_CSS } from './pages/Sheets'
 import { TimetablePage } from './pages/Timetable'
 import { native } from './native'
-import { setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
+import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
 import { canRedo, canUndo, getProject, redo, replaceProject, undo, useProject } from './store'
-import { download, Menu, toast, ToastHost } from './ui'
+import { download, Menu, Modal, toast, ToastHost } from './ui'
 
 type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print'
 
@@ -36,6 +36,7 @@ export default function App() {
   useLang()
   const [page, setPage] = useState<Page>(() => (localStorage.getItem('duzenbaz.page') as Page) || 'start')
   const fileInput = useRef<HTMLInputElement>(null)
+  const [demoOpen, setDemoOpen] = useState(false)
 
   useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch { /* ignore */ } }, [page])
   // Desktop: a .duzenbaz file double-clicked in the file manager.
@@ -115,13 +116,13 @@ export default function App() {
               <button onClick={() => { close(); save(p, false) }}><Icon n="save" /> {t('Save')} <span className="hint">Ctrl+S</span></button>
               {native && <button onClick={() => { close(); save(p, true) }}><Icon n="save" /> {t('Save as…')} <span className="hint">Ctrl+Shift+S</span></button>}
               <hr />
-              <button onClick={() => { close(); if (confirm(t('Load the demo school? This replaces the current project (you can undo).'))) { replaceProject(demoProject()); setPage('generate') } }}><Icon n="cap" /> {t('Load demo school')}</button>
+              <button onClick={() => { close(); setDemoOpen(true) }}><Icon n="cap" /> {t('Load demo school')}</button>
             </>}
           </Menu>
           <input ref={fileInput} type="file" accept=".duzenbaz,.json,.dprg,application/json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = '' }} />
         </header>
         <main className="content">
-          {page === 'start' && <StartPage go={setPage} openFile={pickFile} />}
+          {page === 'start' && <StartPage go={setPage} openFile={pickFile} openDemo={() => setDemoOpen(true)} />}
           {page === 'school' && <SchoolPage />}
           {(page === 'subjects' || page === 'teachers' || (page === 'rooms' && p.useRooms) || page === 'classes') && <EntitiesPage key={page} entity={page} />}
           {page === 'rooms' && !p.useRooms && <SchoolPage />}
@@ -131,6 +132,7 @@ export default function App() {
           {page === 'print' && <PrintPage />}
         </main>
       </div>
+      {demoOpen && <DemoDialog onClose={() => setDemoOpen(false)} onCreate={() => { setDemoOpen(false); setPage('generate') }} />}
       <ToastHost />
     </div>
   )
@@ -164,6 +166,14 @@ function AppearanceMenu() {
             </button>
           ))}
         </div>
+        <div className="menu-title">{t('Font')}</div>
+        <div className="font-list">
+          {FONTS.map(f => (
+            <button key={f.id} className={a.font === f.id ? 'on' : ''} style={{ fontFamily: f.stack }} onClick={() => setAppearance({ font: f.id })}>
+              {t(f.name)} <span className="hint">· Ders Programı 123</span>
+            </button>
+          ))}
+        </div>
         <div className="menu-title">{t('Text size')}</div>
         <div className="size-row">
           {TEXT_SIZES.map(sz => (
@@ -177,12 +187,37 @@ function AppearanceMenu() {
   )
 }
 
+function DemoDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
+  const [classes, setClasses] = useState(12)
+  const range = demoTeacherRange(classes)
+  const [teachers, setTeachers] = useState(range.suggested)
+  const ok = classes >= 1 && classes <= 40 && teachers >= range.min && teachers <= range.max
+  return (
+    <Modal title={t('Demo school')} onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={!ok} onClick={() => { replaceProject(demoProject({ classes, teachers })); onCreate() }}>{t('Create')}</button>
+      </>}>
+      <div className="stack" style={{ maxWidth: 420 }}>
+        <p className="hint" style={{ margin: 0 }}>{t('Creates a sample ortaokul (grades 5–8, 35 lesson hours a week per class). It replaces the current project; you can undo.')}</p>
+        <label className="field">{t('Number of classes')}
+          <input type="number" min={1} max={40} value={classes} onChange={e => { const c = Math.max(1, Math.min(40, +e.target.value || 1)); setClasses(c); setTeachers(demoTeacherRange(c).suggested) }} />
+        </label>
+        <label className="field">{t('Number of teachers')}
+          <input type="number" min={range.min} max={range.max} value={teachers} onChange={e => setTeachers(+e.target.value || 0)} />
+        </label>
+        <span className={teachers < range.min ? 'badge bad' : 'hint'}>{t('At least {min}, suggested {s} for {c} classes.', { min: range.min, s: range.suggested, c: classes })}</span>
+      </div>
+    </Modal>
+  )
+}
+
 function LangBtn({ l }: { l: 'en' | 'tr' }) {
   const cur = useLang()
   return <button className={`btn small ${cur === l ? 'on' : ''}`} onClick={() => setLang(l)}>{l.toUpperCase()}</button>
 }
 
-function StartPage({ go, openFile }: { go: (p: Page) => void; openFile: () => void }) {
+function StartPage({ go, openFile, openDemo }: { go: (p: Page) => void; openFile: () => void; openDemo: () => void }) {
   const p = useProject()
   const steps: [Page, string, string, boolean][] = [
     ['school', 'School & schedule', 'Days, lesson hours and times', !!p.school.name],
@@ -202,7 +237,7 @@ function StartPage({ go, openFile }: { go: (p: Page) => void; openFile: () => vo
         <div className="row">
           <button className="btn primary" onClick={() => go('school')}>{t('Start setting up')}</button>
           <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file / import from Dagitmatik')}</button>
-          <button className="btn" onClick={() => { replaceProject(demoProject()); go('generate') }}><Icon n="cap" /> {t('Try the demo school')}</button>
+          <button className="btn" onClick={openDemo}><Icon n="cap" /> {t('Try the demo school')}</button>
         </div>
       </div>
       <div className="card">

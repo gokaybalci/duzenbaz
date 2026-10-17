@@ -7,7 +7,7 @@ import { colorVars, lessonHours, type Project } from '../model'
 import { cardLines, classLabel, entitiesOf, type CellCard, type Kind, type Names, type TTIndex } from '../timetable'
 
 export const SHEET_CSS = `
-.ts { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
+.ts { font-family: var(--font, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif); color: #111; }
 .ts-head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #222; padding-bottom: 6px; margin-bottom: 10px; gap: 12px; }
 .ts-head h1 { font-size: 22px; margin: 0; }
 .ts-head .sub { font-size: 12px; color: #555; text-align: right; }

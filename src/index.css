@@ -20,7 +20,7 @@
   --radius: 8px;
   --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
   color-scheme: light;
-  font-family: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  font-family: var(--font, 'Segoe UI', 'Noto Sans', system-ui, sans-serif);
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
@@ -250,3 +250,6 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .assign:hover { border-color: var(--accent); }
 .assign.on { border-color: var(--accent); background: var(--accent-soft); }
 .assign input { margin-top: 3px; }
+.font-list { display: flex; flex-direction: column; padding: 2px 4px; }
+.menu-pop .font-list button { border: 2px solid transparent; border-radius: 6px; padding: 5px 8px; font-size: 14px; }
+.menu-pop .font-list button.on { border-color: var(--accent); }

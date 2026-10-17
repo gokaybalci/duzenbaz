@@ -28,7 +28,7 @@ export interface Progress {
 
 export type IssueKind =
   | 'noSlot' | 'teacherClash' | 'roomClash' | 'classClash' | 'sameDay'
-  | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap'
+  | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap' | 'underload'
 
 export interface Issue {
   kind: IssueKind
@@ -234,6 +234,8 @@ export class Solver {
       let open = 0
       for (let s = 0; s < S; s++) if (resAvail[r][s] !== '0' && p.avail[s] !== '0') open++
       if (need[r] > open * caps[r]) this.pre.push({ kind: 'overload', who: this.resName[r], detail: `${need[r]} > ${open * caps[r]}` })
+      // MEB: a class with fewer lesson hours than open periods is left with empty periods.
+      else if (this.compact[r] && need[r] > 0 && need[r] < open) this.pre.push({ kind: 'underload', who: this.resName[r], detail: `${need[r]} < ${open}` })
     }
 
     this.occ = new Uint16Array(R * S)

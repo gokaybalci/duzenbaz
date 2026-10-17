@@ -20,6 +20,12 @@ const ISSUE_TEXT: Record<Issue['kind'], string> = {
   linkMismatch: 'Parallel-linked lessons have different blocks',
   overload: 'More lesson hours than available slots',
   classGap: 'Blank period in class schedule',
+  underload: 'Fewer lesson hours than open periods',
+}
+
+function underloadText(detail = '') {
+  const [need, open] = detail.split(' < ').map(Number)
+  return t('{need} lesson hours, {open} open periods: {n} would stay empty. Add lessons, or close the extra periods for this class (Sınıflar → Koşul) or the whole school.', { need, open, n: open - need })
 }
 
 export function IssueList({ issues, days, periods }: { issues: Issue[]; days: string[]; periods: { label: string }[] }) {
@@ -31,7 +37,7 @@ export function IssueList({ issues, days, periods }: { issues: Issue[]; days: st
           <span className={`badge ${i.kind === 'maxGaps' || i.kind === 'linkMismatch' ? 'warn' : 'bad'}`}>{t(ISSUE_TEXT[i.kind])}</span>
           <b>{i.who}</b>
           <span className="hint">
-            {i.day !== undefined ? days[i.day] : ''}{i.period !== undefined ? ` · ${periods[i.period]?.label}` : ''}{i.detail ? ` · ${i.detail}` : ''}
+            {i.day !== undefined ? days[i.day] : ''}{i.period !== undefined ? ` · ${periods[i.period]?.label}` : ''}{i.kind === 'underload' ? ` · ${underloadText(i.detail)}` : i.detail ? ` · ${i.detail}` : ''}
           </span>
         </div>
       ))}
@@ -55,7 +61,7 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
   const locked = Object.values(p.placements).filter(x => x.locked).length
   // Pre-check: run the evaluator on the current state (cheap) to find structural problems.
   const current = useMemo(() => evaluate(p), [p])
-  const structural = current.issues.filter(i => i.kind === 'noSlot' || i.kind === 'overload' || i.kind === 'linkMismatch')
+  const structural = current.issues.filter(i => i.kind === 'noSlot' || i.kind === 'overload' || i.kind === 'linkMismatch' || i.kind === 'underload')
 
   useEffect(() => () => handle.current?.stop(), [])
   // Desktop: use the real core count (the web engine may report fewer).

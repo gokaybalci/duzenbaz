@@ -37,6 +37,7 @@ body{margin:0;background:#f3f4f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,s
 .sheet{background:#fff;width:297mm;max-width:100%;padding:12mm;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.15);overflow-x:auto}
 .sheet.portrait{width:210mm}
 ${SHEET_CSS}
+:root{--font:${getComputedStyle(document.documentElement).getPropertyValue('--font') || 'sans-serif'}}
 @media print{@page{margin:8mm}body{background:#fff}.sheets{display:block;padding:0}.sheet{box-shadow:none;padding:0;width:auto;break-after:page}.sheet:last-child{break-after:auto}}
 </style></head><body><div class="sheets">${inner}</div></body></html>`
 }

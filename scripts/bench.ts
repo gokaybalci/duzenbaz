@@ -1,7 +1,7 @@
 import { demoProject } from '../src/demo'
 import { solve } from '../src/solver/engine'
-const p = demoProject()
-const hours = p.classes.map(c => p.lessons.filter(l => l.classes.some(x => x.classId === c.id && x.groupId === null)).reduce((a, l) => a + l.split.reduce((x, y) => x + y, 0), 0))
+const p = demoProject({ classes: Number(process.argv[3] ?? 12), teachers: process.argv[4] ? Number(process.argv[4]) : undefined })
+const hours = p.classes.map(c => p.lessons.filter(l => l.classes.some(x => x.classId === c.id && x.groupId === null) || l.classes.some(x => x.classId === c.id && x.groupId === 'g2')).reduce((a, l) => a + l.split.reduce((x, y) => x + y, 0), 0))
 console.log('classes', p.classes.length, 'teachers', p.teachers.length, 'lessons', p.lessons.length, 'class hours', hours.join(','))
 for (const seed of [1, 2, 3]) {
   const t = performance.now()
