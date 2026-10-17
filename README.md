@@ -33,8 +33,6 @@ Windows 7, 8 ve 8.1'de Ocak 2023'te 109. sürümde durdurdu; güncel Rust da art
 yapmıyor. Bu sistemler için bir sürüm, resmi olmayan bir kaynaktan gelen, desteği bitmiş ve güvenlik
 güncellemesi almayan bir motor gerektirirdi; bu, öğrenci verileri için kabul edilemez.
 
-Arayüz **Türkçedir** (her ekran, düğme, çıktı ve Windows kurulum programı için varsayılan). Kenar çubuğunun
-sol altında İngilizceye geçiş düğmesi vardır.
 
 ### Paketleri derlemek
 
@@ -54,69 +52,3 @@ npm install
 npm run dev        # tarayıcıda http://localhost:5173 (tarayıcı depolamasını kullanır, yalnızca geliştirme için)
 ```
 
-## Kullanım
-
-Ekranlar soldaki menünün sırasını izler:
-
-1. **Okul ve zaman çizelgesi** – okul adı, **Okul türü** (İlkokul, Ortaokul, Lise; *Dosya → Yeni proje*
-   ile de sorulur; türün zorunlu dersleri – İlkokul için 13, Ortaokul için 12, Lise için 15 – Dersler
-   bölümüne eklenir; aynı adla ya da yaygın bir başka adla zaten var olanlar atlanır, örneğin Yabancı Dil
-   yerine İngilizce; hiçbir ders silinmez), günler, saatleriyle ders saatleri (ya da başlangıç saati, ders,
-   teneffüs ve öğle arası sürelerinden otomatik oluşturma), okul genelinde kapalı saatler ve **Kurallar**:
-   - *Sınıf programlarında boş saat olmasın (MEB kuralı)* – varsayılan olarak açık, aşağıya bakın.
-   - *Derslik kullan* – varsayılan olarak kapalı, çünkü çoğu okulda sınıfların sabit derslikleri vardır.
-     Yalnızca laboratuvar ya da spor salonu gibi ortak kullanılan özel derslikler için açın; açılana kadar
-     derslikle ilgili her ekran, alan ve çıktı gizlenir.
-2. **Dersler, Öğretmenler, Sınıflar** (derslikler açıksa **Derslikler** de) – Enter ile hızlı ekleme,
-   Excel'den liste yapıştırma, renkler ve ada, kısa ada ya da toplam saate göre sıralanabilen listeler
-   (sütun başlığına tıklayın). Her birinin bir uygunluk tablosu (*koşul*) vardır: saatleri kapatmak için
-   tıklayın ya da sürükleyin, bütün günü kapatmak için güne tıklayın. Yalnızca pazartesi ve salı gelen bir
-   öğretmenin diğer günleri kapatılır ve dersleri asla oraya konmaz. Öğretmenlere günlük en çok ders saati,
-   haftalık en çok gün ve günlük en çok boş saat sınırı da verilebilir. Sınıflar gruplara ayrılabilir
-   (seçmeli dersler, dil grupları). Dersliklerin bir adedi vardır (örneğin Spor Salonu × 2).
-3. **Tanımlı dersler** – bir öğretmen seçin, bir ders seçin ve bu dersi verdiği
-   sınıfları (ya da grupları) işaretleyin; işaretlemek dersi ekler, işareti kaldırmak siler, başka bir
-   öğretmenin girdiği sınıflarda o öğretmenin adı görünür. Birden çok sınıfın ya da öğretmenin birlikte
-   girdiği dersler alttaki formla eklenir. Haftalık saatler bloklara bölünür (`2+2+1` = iki çift ders ve
-   bir tek ders, her biri ayrı günde). Aynı *eş zamanlı bağ*a sahip dersler her zaman aynı saatte yapılır
-   (örneğin iki seçmeli ders grubu). Listedeki dersleri işaretleyip (ya da *Hepsini seç*) diğer sınıflara
-   **Kopyala**yabilir ya da hepsini birlikte **Sil**ebilirsiniz.
-4. **Dağıt** – 8'e kadar aramayı aynı anda çalıştırır ve en iyisini tutar. Dağıtımdan önceki denetimler
-   imkânsız kurulumları durdurur: açık saatlerden fazla ders saati, yerleşebileceği hiçbir saat olmayan
-   bloklar ve açık saatlerden **az** ders saati olan sınıflar (bunlarda boş saat kalırdı).
-   **Mevcudu iyileştir** mevcut programdan devam eder.
-5. **Ders programı** – blokları (fare ya da dokunmatik ile) anlık yeşil / sarı / kırmızı geri bildirimle
-   sürükleyin, yer değiştirmek için aynı uzunluktaki bir bloğun üstüne bırakın, blokları kilitleyin (L),
-   kaldırın (Delete), geri alın/yineleyin (Ctrl+Z / Ctrl+Y). Kilitli bloklar yeniden dağıtımda yerinde
-   kalır. Sınıf programındaki her boş saat kırmızıyla işaretlenir.
-6. **Yazdır ve paylaş** – her sınıf / öğretmen için bir çizelge (çift dersler birleşik, ders listesi,
-   isteğe bağlı müdür imzası), tüm sınıflar ve tüm öğretmenler toplu görünümü, günlük planlar. Yazdırın ya
-   da PDF olarak kaydedin, tek başına açılan bir HTML dosyası kaydedin ya da Excel için CSV dışa aktarın.
-
-**Görünüm** (sol alt) renk temasını (Açık, Krem, Yeşil, Lacivert, Yüksek kontrast, Koyu), yazı tipini
-(Standart, Okunaklı, Ofis, Sade, Klasik — Windows ve Linux'ta zaten bulunan yazı tipleri) ve yazı boyutunu
-(Normal, Büyük, Çok büyük) ayarlar. **Örnek okulu dene**, seçtiğiniz sınıf ve öğretmen sayısıyla, her sınıfı
-haftada tam 35 saat olan örnek bir ortaokul oluşturur.
-
-## Dağıtım nasıl çalışır
-
-`src/solver/engine.ts`. Her ders bloğu, önceden hesaplanmış bir *alana* sahip bir karttır: okulun, dersin,
-her öğretmenin, dersliğin ve sınıfın uygun olduğu başlangıç saatleri. Bu yüzden uygunluk koşulları asla
-çiğnenemez. Bağlı dersler tek bir kartta birleştirilir. Arama:
-
-* önce en zor kartları yerleştirir (en az seçeneği olan, en uzun bloklar),
-* ardından taşıma, aynı uzunlukta bir kartla yer değiştirme, çakışan kartları çıkarıp yeniden yerleştirme
-  ve en iyi konum hamleleriyle benzetimli tavlama (simulated annealing) çalıştırır; maliyetler kaynak ve gün
-  bazında güncellenir,
-* sıkışık okulları da çözebilmek için çakışmaları uyarlamalı olarak ağırlıklandırır ve en iyi çözümden
-  yeniden başlar,
-* çözümleri (zorunlu sorunlar, yumuşak ceza) sırasına göre değerlendirir. Zorunlu: çift rezervasyonlar,
-  bir dersin iki bloğunun aynı günde olması, öğretmen sınırları ve — MEB kuralı açıkken — ilk açık saatte
-  başlamayan ya da dersler arasında boş saat bulunan her sınıf günü (okul genelindeki öğle arası gibi
-  kapalı saatler sayılmaz). Yumuşak: öğretmen boş saatleri ve bir dersin bloklarının art arda günlere
-  düşmesi.
-
-Ölçümler, hepsi tek iş parçacığıyla (`npm run bench -- <ms> <sınıf> [öğretmen]`, `npm run bench:dprg`):
-4, 12 ve 20 sınıf için, ayrıca örnek okulun izin verdiği en az öğretmen sayısıyla da 28 sınıf için yaklaşık
-5–7 saniyede, 0 sorun ve 0 boş sınıf saatiyle tam 35 saatlik haftalar. "Zor" olanlar dahil tüm `.dprg`
-örnek projeleri çakışmasız çözülür.
