@@ -52,3 +52,7 @@ npm install
 npm run dev        # tarayıcıda http://localhost:5173 (tarayıcı depolamasını kullanır, yalnızca geliştirme için)
 ```
 
+
+## Lisans
+
+Düzenbaz, [GNU Genel Kamu Lisansı v3.0](LICENSE) (GPL-3.0) ile lisanslanmıştır.
