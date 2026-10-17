@@ -1,111 +1,121 @@
-# Düzenbaz — school timetable builder
+# Düzenbaz — okul ders programı hazırlayıcı
 
-A fast desktop timetable (ders programı) generator for Windows and Linux, built as a modern alternative to Dagitmatik.
-Classes, teachers and lessons go in; a conflict-free weekly timetable with **no blank periods in any class day**
-(MEB rule) comes out, with printable class and teacher sheets, an all-classes overview ("çarşaf liste") and
-daily plans.
+Windows ve Linux için hızlı bir masaüstü ders programı hazırlama uygulaması; Dagitmatik'e modern bir alternatif
+olarak geliştirildi. Sınıfları, öğretmenleri ve dersleri girersiniz; **hiçbir sınıf gününde boş saat olmayan**
+(MEB kuralı), çakışmasız bir haftalık program çıkar. Sınıf ve öğretmen çizelgeleri, tüm sınıfların toplu
+görünümü ("çarşaf liste") ve günlük planlar yazdırılabilir.
 
-## Desktop app (recommended for real school data)
+## Masaüstü uygulaması (gerçek okul verileri için önerilir)
 
-Düzenbaz ships as a small native desktop app built with [Tauri](https://tauri.app). It uses the operating
-system's own web engine, so there is no bundled browser: installers are a few MB and idle CPU is ~0.
+Düzenbaz, [Tauri](https://tauri.app) ile yapılmış küçük, yerel bir masaüstü uygulamasıdır. İşletim sisteminin
+kendi web motorunu kullanır, içinde ayrı bir tarayıcı taşımaz: kurulum dosyaları birkaç MB'dır, boştayken
+işlemci kullanımı neredeyse sıfırdır.
 
-**Your data never leaves the computer:**
-- the whole UI is compiled into the program; nothing is loaded from the internet,
-- a strict content security policy forbids every network connection,
-- the page cannot touch the disk by itself; files are read and written only by the app's own Rust commands
-  (`src-tauri/src/lib.rs`), always after a native Open/Save dialog the user confirms,
-- the working copy is stored in the user's own profile folder
+**Verileriniz bilgisayardan hiç çıkmaz:**
+- arayüzün tamamı programın içine derlenmiştir; internetten hiçbir şey yüklenmez,
+- katı bir içerik güvenlik politikası (CSP) her türlü ağ bağlantısını yasaklar,
+- sayfa diske kendi başına erişemez; dosyalar yalnızca uygulamanın kendi Rust komutlarıyla
+  (`src-tauri/src/lib.rs`) ve her zaman kullanıcının onayladığı yerel bir Aç/Kaydet penceresinden sonra
+  okunur ve yazılır,
+- çalışma kopyası kullanıcının kendi profil klasöründe tutulur
   (Windows: `%LOCALAPPDATA%\com.duzenbaz.desktop`, Linux: `~/.local/share/com.duzenbaz.desktop`),
-- saves are atomic (temporary file + rename), so a power cut can't corrupt a project.
+- kayıtlar atomiktir (geçici dosya + yeniden adlandırma), bu yüzden elektrik kesintisi projeyi bozamaz.
 
-| Platform | Package | Notes |
+| Platform | Paket | Notlar |
 | --- | --- | --- |
-| Windows 10 / 11 (64-bit) | `Duzenbaz_x.y.z_x64-setup.exe` | Installs per user, no admin rights needed. Uses Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; otherwise the installer fetches it once. |
-| Linux (most distributions) | `Duzenbaz_x.y.z_amd64.AppImage` | `chmod +x` and run. Built on Ubuntu 22.04 (glibc 2.35) so it runs on Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+, etc. |
-| Debian/Ubuntu, Fedora/openSUSE | `.deb`, `.rpm` | Native packages, if you prefer those. |
+| Windows 10 / 11 (64 bit) | `Duzenbaz_x.y.z_x64-setup.exe` | Kullanıcıya özel kurulur, yönetici yetkisi gerekmez. Microsoft Edge WebView2 kullanır; Windows 11'de ve güncel Windows 10'da zaten vardır, yoksa kurulum programı bir kez indirir. |
+| Linux (çoğu dağıtım) | `Duzenbaz_x.y.z_amd64.AppImage` | `chmod +x` ile çalıştırılabilir yapıp açın. Ubuntu 22.04 (glibc 2.35) üzerinde derlenir; Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+ vb. üzerinde çalışır. |
+| Debian/Ubuntu, Fedora/openSUSE | `.deb`, `.rpm` | Tercih ederseniz yerel paketler. |
 
-**Windows 8 / 8.1 and 7 are not supported.** Microsoft stopped WebView2 (the web engine Windows apps like this one use)
-on Windows 7, 8 and 8.1 at version 109 in January 2023, and current Rust no longer builds for them. A build for those
-systems would need an unsupported, no-longer-patched engine from an unofficial source, which is not acceptable for
-student data.
+**Windows 8 / 8.1 ve 7 desteklenmez.** Microsoft, bu tür uygulamaların kullandığı web motoru WebView2'yi
+Windows 7, 8 ve 8.1'de Ocak 2023'te 109. sürümde durdurdu; güncel Rust da artık bu sistemler için derleme
+yapmıyor. Bu sistemler için bir sürüm, resmi olmayan bir kaynaktan gelen, desteği bitmiş ve güvenlik
+güncellemesi almayan bir motor gerektirirdi; bu, öğrenci verileri için kabul edilemez.
 
-The interface is **Turkish** (the default for every screen, button, printout and the Windows installer). An English
-switch is available at the bottom-left of the sidebar.
+Arayüz **Türkçedir** (her ekran, düğme, çıktı ve Windows kurulum programı için varsayılan). Kenar çubuğunun
+sol altında İngilizceye geçiş düğmesi vardır.
 
-### Build the packages
+### Paketleri derlemek
 
-Only Docker is needed; everything else (Rust, Node, Windows cross-compiler, NSIS) is inside the build image.
+Yalnızca Docker gerekir; geri kalan her şey (Rust, Node, Windows çapraz derleyicisi, NSIS) derleme
+imajının içindedir.
 
 ```bash
-packaging/build.sh           # Linux + Windows, results in release/
-packaging/build.sh linux     # only AppImage/deb/rpm
-packaging/build.sh windows   # only the Windows installer
+packaging/build.sh           # Linux + Windows, sonuçlar release/ klasörüne
+packaging/build.sh linux     # yalnızca AppImage/deb/rpm
+packaging/build.sh windows   # yalnızca Windows kurulum programı
 ```
 
-### Develop
+### Geliştirme
 
 ```bash
 npm install
-npm run dev        # browser at http://localhost:5173 (uses browser storage, for development only)
+npm run dev        # tarayıcıda http://localhost:5173 (tarayıcı depolamasını kullanır, yalnızca geliştirme için)
 ```
 
-## Workflow
+## Kullanım
 
-The screens follow the left-hand menu (UI names in Turkish):
+Ekranlar soldaki menünün sırasını izler:
 
-1. **Okul ve zaman çizelgesi** – school name, **Okul türü** (İlkokul, Ortaokul, Lise; also asked by
-   *Dosya → Yeni proje*; the type's mandatory subjects – 13 for İlkokul, 12 for Ortaokul, 15 for Lise –
-   are added to Dersler, skipping any that already exist under the same or a common alternative name,
-   e.g. İngilizce for Yabancı Dil; nothing is ever removed), days, lesson periods with times (or generate them from start
-   time, lesson, break and lunch lengths), school-wide closed periods, and **Kurallar**:
-   - *Sınıf programlarında boş saat olmasın (MEB kuralı)* – on by default, see below.
-   - *Derslik kullan* – off by default, because most schools have fixed classrooms. Turn it on only to share
-     special rooms such as labs or the gym; until then every room screen, field and printout is hidden.
-2. **Dersler, Öğretmenler, Sınıflar** (and **Derslikler** when rooms are on) – quick add with Enter, paste
-   lists from Excel, colours, and lists you can sort by name, short name or total hours (click a column header).
-   Each has an availability grid (*koşul*): click or drag to close periods, click a day to close the whole day.
-   A teacher who only comes on Monday and Tuesday gets the other days closed, and lessons are never placed
-   there. Teachers can also have max hours per day, max days per week and max gaps per day. Classes can be
-   split into groups (electives, language groups). Rooms have a quantity (e.g. Spor Salonu × 2).
-3. **Tanımlı dersler** – choose a teacher, pick a subject and tick the classes (or groups) they teach it to,
-   as in Dagitmatik; ticking adds the lesson, unticking removes it, and classes taught by someone else show
-   that teacher's name. Lessons for several classes or teachers together are added with the form below it.
-   Weekly hours are split into blocks (`2+2+1` = two double lessons and a single, each on a different day).
-   Lessons with the same *eş zamanlı bağ* always run at the same time (e.g. two elective groups).
-   Tick lessons in the list (or *Hepsini seç*) to **Kopyala** them to other classes or **Sil** them together.
-4. **Dağıt** – runs up to 8 searches in parallel and keeps the best. Checks before distributing stop
-   impossible setups: more hours than open periods, blocks with no possible period, and classes with
-   **fewer** hours than open periods (those would be left with empty periods). **Mevcudu iyileştir**
-   continues from the current timetable.
-5. **Ders programı** – drag blocks (mouse or touch) with live green / yellow / red feedback, drop on a block of
-   the same length to swap, lock blocks (L), remove (Delete), undo/redo (Ctrl+Z / Ctrl+Y). Locked blocks stay
-   put when you distribute again. Any blank class period is marked red.
-6. **Yazdır ve paylaş** – one sheet per class / teacher (double lessons merged, lesson list, optional principal
-   signature), all-classes and all-teachers overviews, daily plans. Print or save as PDF, save a standalone
-   HTML file, or export CSV for Excel.
+1. **Okul ve zaman çizelgesi** – okul adı, **Okul türü** (İlkokul, Ortaokul, Lise; *Dosya → Yeni proje*
+   ile de sorulur; türün zorunlu dersleri – İlkokul için 13, Ortaokul için 12, Lise için 15 – Dersler
+   bölümüne eklenir; aynı adla ya da yaygın bir başka adla zaten var olanlar atlanır, örneğin Yabancı Dil
+   yerine İngilizce; hiçbir ders silinmez), günler, saatleriyle ders saatleri (ya da başlangıç saati, ders,
+   teneffüs ve öğle arası sürelerinden otomatik oluşturma), okul genelinde kapalı saatler ve **Kurallar**:
+   - *Sınıf programlarında boş saat olmasın (MEB kuralı)* – varsayılan olarak açık, aşağıya bakın.
+   - *Derslik kullan* – varsayılan olarak kapalı, çünkü çoğu okulda sınıfların sabit derslikleri vardır.
+     Yalnızca laboratuvar ya da spor salonu gibi ortak kullanılan özel derslikler için açın; açılana kadar
+     derslikle ilgili her ekran, alan ve çıktı gizlenir.
+2. **Dersler, Öğretmenler, Sınıflar** (derslikler açıksa **Derslikler** de) – Enter ile hızlı ekleme,
+   Excel'den liste yapıştırma, renkler ve ada, kısa ada ya da toplam saate göre sıralanabilen listeler
+   (sütun başlığına tıklayın). Her birinin bir uygunluk tablosu (*koşul*) vardır: saatleri kapatmak için
+   tıklayın ya da sürükleyin, bütün günü kapatmak için güne tıklayın. Yalnızca pazartesi ve salı gelen bir
+   öğretmenin diğer günleri kapatılır ve dersleri asla oraya konmaz. Öğretmenlere günlük en çok ders saati,
+   haftalık en çok gün ve günlük en çok boş saat sınırı da verilebilir. Sınıflar gruplara ayrılabilir
+   (seçmeli dersler, dil grupları). Dersliklerin bir adedi vardır (örneğin Spor Salonu × 2).
+3. **Tanımlı dersler** – Dagitmatik'teki gibi bir öğretmen seçin, bir ders seçin ve bu dersi verdiği
+   sınıfları (ya da grupları) işaretleyin; işaretlemek dersi ekler, işareti kaldırmak siler, başka bir
+   öğretmenin girdiği sınıflarda o öğretmenin adı görünür. Birden çok sınıfın ya da öğretmenin birlikte
+   girdiği dersler alttaki formla eklenir. Haftalık saatler bloklara bölünür (`2+2+1` = iki çift ders ve
+   bir tek ders, her biri ayrı günde). Aynı *eş zamanlı bağ*a sahip dersler her zaman aynı saatte yapılır
+   (örneğin iki seçmeli ders grubu). Listedeki dersleri işaretleyip (ya da *Hepsini seç*) diğer sınıflara
+   **Kopyala**yabilir ya da hepsini birlikte **Sil**ebilirsiniz.
+4. **Dağıt** – 8'e kadar aramayı aynı anda çalıştırır ve en iyisini tutar. Dağıtımdan önceki denetimler
+   imkânsız kurulumları durdurur: açık saatlerden fazla ders saati, yerleşebileceği hiçbir saat olmayan
+   bloklar ve açık saatlerden **az** ders saati olan sınıflar (bunlarda boş saat kalırdı).
+   **Mevcudu iyileştir** mevcut programdan devam eder.
+5. **Ders programı** – blokları (fare ya da dokunmatik ile) anlık yeşil / sarı / kırmızı geri bildirimle
+   sürükleyin, yer değiştirmek için aynı uzunluktaki bir bloğun üstüne bırakın, blokları kilitleyin (L),
+   kaldırın (Delete), geri alın/yineleyin (Ctrl+Z / Ctrl+Y). Kilitli bloklar yeniden dağıtımda yerinde
+   kalır. Sınıf programındaki her boş saat kırmızıyla işaretlenir.
+6. **Yazdır ve paylaş** – her sınıf / öğretmen için bir çizelge (çift dersler birleşik, ders listesi,
+   isteğe bağlı müdür imzası), tüm sınıflar ve tüm öğretmenler toplu görünümü, günlük planlar. Yazdırın ya
+   da PDF olarak kaydedin, tek başına açılan bir HTML dosyası kaydedin ya da Excel için CSV dışa aktarın.
 
-**Görünüm** (bottom-left) sets the colour theme (Açık, Krem, Yeşil, Lacivert, Yüksek kontrast, Koyu), the font
-(Standart, Okunaklı, Ofis, Sade, Klasik — fonts already on Windows and Linux) and the text size
-(Normal, Büyük, Çok büyük). **Örnek okulu dene** builds a demo ortaokul with the number of classes and
-teachers you choose, every class with a full 35-hour week.
+**Görünüm** (sol alt) renk temasını (Açık, Krem, Yeşil, Lacivert, Yüksek kontrast, Koyu), yazı tipini
+(Standart, Okunaklı, Ofis, Sade, Klasik — Windows ve Linux'ta zaten bulunan yazı tipleri) ve yazı boyutunu
+(Normal, Büyük, Çok büyük) ayarlar. **Örnek okulu dene**, seçtiğiniz sınıf ve öğretmen sayısıyla, her sınıfı
+haftada tam 35 saat olan örnek bir ortaokul oluşturur.
 
-## How the distribution works
+## Dağıtım nasıl çalışır
 
-`src/solver/engine.ts`. Each lesson block is a card with a precomputed *domain*: the start periods where the
-school, subject, every teacher, room and class are available. So availability can never be broken. Linked
-lessons are merged into one card. The search:
+`src/solver/engine.ts`. Her ders bloğu, önceden hesaplanmış bir *alana* sahip bir karttır: okulun, dersin,
+her öğretmenin, dersliğin ve sınıfın uygun olduğu başlangıç saatleri. Bu yüzden uygunluk koşulları asla
+çiğnenemez. Bağlı dersler tek bir kartta birleştirilir. Arama:
 
-* places the hardest cards first (fewest options, longest blocks),
-* then runs simulated annealing with moves (relocate, swap with a same-length card, eject and re-place
-  conflicting cards, best position), with costs updated per resource and day,
-* weights conflicts adaptively so it can get through tight schools, and restarts from the best solution,
-* ranks solutions by (hard problems, soft penalty). Hard: double bookings, two blocks of one lesson on a day,
-  teacher limits, and — with the MEB rule on — any class day that does not start at the first open period or
-  has an empty period between lessons (closed periods such as a school-wide lunch break don't count).
-  Soft: teacher gaps and blocks of a lesson on consecutive days.
+* önce en zor kartları yerleştirir (en az seçeneği olan, en uzun bloklar),
+* ardından taşıma, aynı uzunlukta bir kartla yer değiştirme, çakışan kartları çıkarıp yeniden yerleştirme
+  ve en iyi konum hamleleriyle benzetimli tavlama (simulated annealing) çalıştırır; maliyetler kaynak ve gün
+  bazında güncellenir,
+* sıkışık okulları da çözebilmek için çakışmaları uyarlamalı olarak ağırlıklandırır ve en iyi çözümden
+  yeniden başlar,
+* çözümleri (zorunlu sorunlar, yumuşak ceza) sırasına göre değerlendirir. Zorunlu: çift rezervasyonlar,
+  bir dersin iki bloğunun aynı günde olması, öğretmen sınırları ve — MEB kuralı açıkken — ilk açık saatte
+  başlamayan ya da dersler arasında boş saat bulunan her sınıf günü (okul genelindeki öğle arası gibi
+  kapalı saatler sayılmaz). Yumuşak: öğretmen boş saatleri ve bir dersin bloklarının art arda günlere
+  düşmesi.
 
-Benchmarks, all single-threaded (`npm run bench -- <ms> <classes> [teachers]`, `npm run bench:dagitmatik`):
-full 35-hour weeks with 0 problems and 0 empty class periods for 4, 12 and 20 classes, and for 28 classes
-in about 5–7 s, also with the smallest teacher count the demo allows. All Dagitmatik sample projects,
-including the "Zor" ones, solve without conflicts.
+Ölçümler, hepsi tek iş parçacığıyla (`npm run bench -- <ms> <sınıf> [öğretmen]`, `npm run bench:dagitmatik`):
+4, 12 ve 20 sınıf için, ayrıca örnek okulun izin verdiği en az öğretmen sayısıyla da 28 sınıf için yaklaşık
+5–7 saniyede, 0 sorun ve 0 boş sınıf saatiyle tam 35 saatlik haftalar. "Zor" olanlar dahil tüm Dagitmatik
+örnek projeleri çakışmasız çözülür.
