@@ -88,5 +88,6 @@ export function dprgXmlToProject(xml: string, parser: DOMParser = new DOMParser(
     weights: { ...DEFAULT_WEIGHTS },
     strictClasses: true,
     useRooms: lessons.some(l => l.roomIds.length > 0),
+    schoolType: '', // Dagitmatik files do not say; the user picks it on the School page
   }
 }

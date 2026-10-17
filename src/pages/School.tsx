@@ -1,13 +1,20 @@
 import { useState } from 'react'
 import { Icon } from '../icons'
 import { DAY_NAMES, t, useLang } from '../i18n'
-import type { Period } from '../model'
+import { addMandatorySubjects, SCHOOL_TYPES, type Period, type SchoolType } from '../model'
 import { setTimeShape, update, useProject } from '../store'
-import { AvailabilityEditor } from '../ui'
+import { AvailabilityEditor, toast } from '../ui'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0) }
 const fmt = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
+
+/** Set the school type; picking Ortaokul adds its mandatory subjects that are missing. */
+function setSchoolType(type: SchoolType) {
+  let added = 0
+  update(d => { d.schoolType = type; if (type === 'ortaokul') added = addMandatorySubjects(d) })
+  if (added) toast(t('{n} mandatory subjects added to Subjects', { n: added }))
+}
 
 export function SchoolPage() {
   const p = useProject()
@@ -36,6 +43,12 @@ export function SchoolPage() {
           <h3>{t('School')}</h3>
           <label className="field">{t('School name')}
             <input value={p.school.name} onChange={e => update(d => { d.school.name = e.target.value }, 'school.name')} />
+          </label>
+          <label className="field">{t('School type')}
+            <select value={p.schoolType} onChange={e => setSchoolType(e.target.value as SchoolType)}>
+              {!p.schoolType && <option value="">{t('Choose…')}</option>}
+              {SCHOOL_TYPES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
           </label>
           <div className="row">
             <label className="field" style={{ flex: 1 }}>{t('School year')}

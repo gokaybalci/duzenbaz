@@ -14,7 +14,7 @@ const CORE: [string, string, number, string?][] = [
   ['Beden Eğitimi ve Spor', 'BED', 2, 'Spor Salonu'],
   ['Müzik', 'MÜZ', 1],
   ['Görsel Sanatlar', 'GÖR', 1],
-  ['Bilişim Teknolojileri', 'BİL', 2, 'BT Sınıfı'],
+  ['Bilişim Teknolojileri ve Yazılım', 'BİL', 2, 'BT Sınıfı'],
   ['Teknoloji ve Tasarım', 'TTS', 2],
   ['Rehberlik ve Yönlendirme', 'REH', 1],
 ]
@@ -49,6 +49,7 @@ export function demoTeacherRange(classes: number) {
 
 export function demoProject({ classes, teachers, withRooms = false }: DemoOptions = { classes: 12 }): Project {
   const p = emptyProject()
+  p.schoolType = 'ortaokul'
   p.school = { name: 'Örnek Ortaokulu', year: '2026-2027', principal: 'Hasan Yıldız' }
   p.periods = p.periods.slice(0, 7)
   const D = p.days.length, P = p.periods.length

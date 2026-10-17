@@ -95,7 +95,12 @@ export interface Project {
   strictClasses: boolean
   /** Use rooms (derslik) at all. Most schools have fixed classrooms, so this is off by default. */
   useRooms: boolean
+  /** Okul türü; '' = henüz seçilmedi. */
+  schoolType: SchoolType
 }
+
+export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
+export const SCHOOL_TYPES: [SchoolType, string][] = [['ilkokul', 'İlkokul'], ['ortaokul', 'Ortaokul'], ['lise', 'Lise']]
 
 export const cardId = (lessonId: string, part: number) => `${lessonId}#${part}`
 
@@ -145,7 +150,35 @@ export function emptyProject(): Project {
     weights: { ...DEFAULT_WEIGHTS },
     strictClasses: true,
     useRooms: false,
+    schoolType: '',
   }
+}
+
+// Ortaokul (5-8) zorunlu dersleri: [ad, kısa ad, aynı sayılan diğer adlar]
+export const ORTAOKUL_SUBJECTS: [string, string, string[]][] = [
+  ['Türkçe', 'TÜR', []],
+  ['Matematik', 'MAT', []],
+  ['Fen Bilimleri', 'FEN', []],
+  ['Sosyal Bilgiler', 'SOS', []],
+  ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
+  ['Yabancı Dil', 'YDL', ['İngilizce', 'Almanca', 'Fransızca', 'Arapça']],
+  ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
+  ['Görsel Sanatlar', 'GÖR', ['Resim']],
+  ['Müzik', 'MÜZ', []],
+  ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
+  ['Bilişim Teknolojileri ve Yazılım', 'BİL', ['Bilişim Teknolojileri']],
+  ['Teknoloji ve Tasarım', 'TTS', []],
+]
+
+const subjectKey = (name: string) => name.toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]/gu, '')
+
+/** Add the mandatory subjects the project does not have yet (matched by name, ignoring case and punctuation). Returns how many were added. */
+export function addMandatorySubjects(p: Project, list = ORTAOKUL_SUBJECTS): number {
+  const have = new Set(p.subjects.map(s => subjectKey(s.name)))
+  const missing = list.filter(([name, , alt]) => ![name, ...alt].some(n => have.has(subjectKey(n))))
+  for (const [name, short] of missing)
+    p.subjects.push({ id: newId('s'), name, short, color: pickColor(p.subjects.length), avail: fullGrid(p.days.length, p.periods.length) })
+  return missing.length
 }
 
 export const lessonHours = (l: Lesson) => l.split.reduce((a, b) => a + b, 0)

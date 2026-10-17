@@ -54,7 +54,9 @@ npm run dev        # browser at http://localhost:5173 (uses browser storage, for
 
 The screens follow the left-hand menu (UI names in Turkish):
 
-1. **Okul ve zaman çizelgesi** – school name, days, lesson periods with times (or generate them from start
+1. **Okul ve zaman çizelgesi** – school name, **Okul türü** (İlkokul, Ortaokul, Lise; also asked by
+   *Dosya → Yeni proje*; choosing Ortaokul adds the 12 mandatory subjects to Dersler, skipping any that
+   already exist under the same or a common alternative name, e.g. İngilizce for Yabancı Dil), days, lesson periods with times (or generate them from start
    time, lesson, break and lunch lengths), school-wide closed periods, and **Kurallar**:
    - *Sınıf programlarında boş saat olmasın (MEB kuralı)* – on by default, see below.
    - *Derslik kullan* – off by default, because most schools have fixed classrooms. Turn it on only to share

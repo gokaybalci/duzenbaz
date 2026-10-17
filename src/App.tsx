@@ -3,7 +3,7 @@ import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
 import { readDprg } from './io/dprg'
-import { emptyProject, type Project } from './model'
+import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
 import { LessonsPage } from './pages/Lessons'
@@ -37,6 +37,7 @@ export default function App() {
   const [page, setPage] = useState<Page>(() => (localStorage.getItem('duzenbaz.page') as Page) || 'start')
   const fileInput = useRef<HTMLInputElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
+  const [newOpen, setNewOpen] = useState(false)
 
   useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch { /* ignore */ } }, [page])
   // Desktop: a .duzenbaz file double-clicked in the file manager.
@@ -111,7 +112,7 @@ export default function App() {
           <button className="btn ghost icon" onClick={redo} disabled={!canRedo()} title={t('Redo') + ' (Ctrl+Y)'}><Icon n="redo" /></button>
           <Menu label={<><Icon n="folder" /> {t('File')} <Icon n="down" size={12} /></>}>
             {close => <>
-              <button onClick={() => { close(); if (confirm(t('Start a new empty project? Unsaved changes will be lost (you can still undo).'))) { native?.forgetProjectPath(); const e = emptyProject(); e.days = DAY_NAMES[document.documentElement.lang === 'tr' ? 'tr' : 'en'].slice(0, 5); replaceProject(e); setPage('school') } }}><Icon n="file" /> {t('New project')}</button>
+              <button onClick={() => { close(); setNewOpen(true) }}><Icon n="file" /> {t('New project')}</button>
               <button onClick={() => { close(); pickFile() }}><Icon n="open" /> {t('Open… (.duzenbaz or Dagitmatik .dprg)')}</button>
               <button onClick={() => { close(); save(p, false) }}><Icon n="save" /> {t('Save')} <span className="hint">Ctrl+S</span></button>
               {native && <button onClick={() => { close(); save(p, true) }}><Icon n="save" /> {t('Save as…')} <span className="hint">Ctrl+Shift+S</span></button>}
@@ -132,6 +133,7 @@ export default function App() {
           {page === 'print' && <PrintPage />}
         </main>
       </div>
+      {newOpen && <NewProjectDialog onClose={() => setNewOpen(false)} onCreate={() => { setNewOpen(false); setPage('school') }} />}
       {demoOpen && <DemoDialog onClose={() => setDemoOpen(false)} onCreate={() => { setDemoOpen(false); setPage('generate') }} />}
       <ToastHost />
     </div>
@@ -184,6 +186,37 @@ function AppearanceMenu() {
         </div>
       </div>}
     </Menu>
+  )
+}
+
+function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
+  const [type, setType] = useState<SchoolType>('')
+  const create = () => {
+    native?.forgetProjectPath()
+    const e = emptyProject()
+    e.days = DAY_NAMES[document.documentElement.lang === 'tr' ? 'tr' : 'en'].slice(0, 5)
+    e.schoolType = type
+    if (type === 'ortaokul') addMandatorySubjects(e)
+    replaceProject(e)
+    onCreate()
+  }
+  return (
+    <Modal title={t('New project')} onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={!type} onClick={create}>{t('Create')}</button>
+      </>}>
+      <div className="stack" style={{ maxWidth: 420 }}>
+        <p className="hint" style={{ margin: 0 }}>{t('Start a new empty project? Unsaved changes will be lost (you can still undo).')}</p>
+        <b>{t('School type')}</b>
+        {SCHOOL_TYPES.map(([v, label]) => (
+          <label key={v} className="check">
+            <input type="radio" name="schoolType" checked={type === v} onChange={() => setType(v)} />
+            <span>{label}{v === 'ortaokul' && <><br /><span className="hint">{t('The mandatory ortaokul subjects are added for you.')}</span></>}</span>
+          </label>
+        ))}
+      </div>
+    </Modal>
   )
 }
 
