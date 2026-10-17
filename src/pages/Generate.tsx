@@ -19,6 +19,7 @@ const ISSUE_TEXT: Record<Issue['kind'], string> = {
   maxGaps: 'Too many gaps in a day',
   linkMismatch: 'Parallel-linked lessons have different blocks',
   overload: 'More lesson hours than available slots',
+  classGap: 'Blank period in class schedule',
 }
 
 export function IssueList({ issues, days, periods }: { issues: Issue[]; days: string[]; periods: { label: string }[] }) {

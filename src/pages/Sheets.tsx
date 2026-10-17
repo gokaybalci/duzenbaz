@@ -79,7 +79,7 @@ function cellContent(cards: CellCard[], n: Names, kind: Kind, viewer: string, o:
       const own = c.lesson.classes.find(x => x.classId === viewer)
       const grp = own?.groupId ? classLabel(n, own, true).replace(/^[^(]*\(|\)$/g, '') : null
       const tea = o.showTeachers ? c.lesson.teacherIds.map(x => (o.short ? n.teacher.get(x)?.short : n.teacher.get(x)?.name) ?? '?').join(', ') : ''
-      const room = o.showRooms ? c.lesson.roomIds.map(x => (o.short ? n.room.get(x)?.short : n.room.get(x)?.name) ?? '?').join(', ') : ''
+      const room = o.showRooms ? c.lesson.roomIds.filter(x => n.room.has(x)).map(x => (o.short ? n.room.get(x)?.short : n.room.get(x)?.name)).join(', ') : ''
       lines = [grp, tea, room].filter((x): x is string => !!x)
     } else if (!o.showRooms) lines = lines.slice(0, 1)
     return (

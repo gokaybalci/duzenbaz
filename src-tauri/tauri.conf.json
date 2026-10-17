@@ -1,9 +1,9 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Dersplan",
-  "mainBinaryName": "dersplan",
+  "productName": "Düzenbaz",
+  "mainBinaryName": "duzenbaz",
   "version": "1.0.0",
-  "identifier": "com.dersplan.desktop",
+  "identifier": "com.duzenbaz.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Dersplan",
+        "title": "Düzenbaz",
         "width": 1360,
         "height": 860,
         "minWidth": 960,
@@ -34,11 +34,11 @@
     "active": true,
     "targets": ["appimage", "deb", "rpm", "nsis"],
     "category": "Education",
-    "shortDescription": "School timetable builder",
-    "longDescription": "Build conflict-free weekly school timetables for classes, teachers and rooms. All data stays on this computer.",
+    "shortDescription": "Okul ders programı hazırlama",
+    "longDescription": "Sınıflar ve öğretmenler için çakışmasız haftalık ders programı hazırlar. Tüm veriler bu bilgisayarda kalır.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "fileAssociations": [
-      { "ext": ["dersplan"], "name": "Dersplan project", "description": "Dersplan timetable project", "role": "Editor", "mimeType": "application/x-dersplan" }
+      { "ext": ["duzenbaz"], "name": "Düzenbaz projesi", "description": "Düzenbaz ders programı projesi", "role": "Editor", "mimeType": "application/x-duzenbaz" }
     ],
     "linux": {
       "appimage": { "bundleMediaFramework": false }

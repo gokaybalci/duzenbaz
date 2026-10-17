@@ -91,6 +91,10 @@ export interface Project {
   /** key = cardId(lessonId, part) */
   placements: Record<string, Placement>
   weights: Weights
+  /** MEB rule: every class day starts at the first period and has no blank periods. */
+  strictClasses: boolean
+  /** Use rooms (derslik) at all. Most schools have fixed classrooms, so this is off by default. */
+  useRooms: boolean
 }
 
 export const cardId = (lessonId: string, part: number) => `${lessonId}#${part}`
@@ -139,6 +143,8 @@ export function emptyProject(): Project {
     lessons: [],
     placements: {},
     weights: { ...DEFAULT_WEIGHTS },
+    strictClasses: true,
+    useRooms: false,
   }
 }
 

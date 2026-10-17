@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    dersplan_lib::run();
+    duzenbaz_lib::run();
 }

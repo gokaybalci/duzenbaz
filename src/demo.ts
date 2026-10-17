@@ -2,12 +2,13 @@
 
 import { defaultSplit, emptyProject, fullGrid, newId, pickColor, type Lesson, type Project, type Teacher } from './model'
 
-export function demoProject(sections = ['A', 'B', 'C']): Project {
+export function demoProject(sections = ['A', 'B', 'C'], withRooms = false): Project {
   const p = emptyProject()
   p.school = { name: 'Örnek Ortaokulu', year: '2026-2027', principal: 'Hasan Yıldız' }
   p.periods = p.periods.slice(0, 7)
   const D = p.days.length, P = p.periods.length
   p.avail = fullGrid(D, P)
+  p.useRooms = withRooms
 
   const curriculum: [string, string, number, string?][] = [
     ['Matematik', 'MAT', 5],
@@ -27,9 +28,10 @@ export function demoProject(sections = ['A', 'B', 'C']): Project {
   ]
   p.subjects = curriculum.map(([name, short], i) => ({ id: 's' + i, name, short, color: pickColor(i), avail: fullGrid(D, P) }))
   p.rooms = [['Fen Laboratuvarı', 'LAB'], ['Spor Salonu', 'SPOR'], ['BT Sınıfı', 'BT']].map(([name, short], i) => ({ id: 'r' + i, name, short, color: pickColor(i + 5), avail: fullGrid(D, P), capacity: 1 }))
+  if (!withRooms) p.rooms = []
   // Büyük okullarda her özel derslikten birden fazla olur.
   const scale = Math.ceil(sections.length / 3)
-  p.rooms[0].capacity = scale; p.rooms[1].capacity = scale; p.rooms[2].capacity = scale
+  for (const r of p.rooms) r.capacity = scale
 
   const grades = [5, 6, 7, 8]
   p.classes = grades.flatMap(g => sections.map(s => ({ id: `c${g}${s}`, name: `${g}-${s}`, short: `${g}${s}`, color: pickColor(g), avail: fullGrid(D, P), groups: [] })))
@@ -57,7 +59,7 @@ export function demoProject(sections = ['A', 'B', 'C']): Project {
       const t = ts[Math.floor((ci * nT) / p.classes.length)]
       lessons.push({
         // Fen laboratuvarını yalnızca 7. ve 8. sınıflar kullanır.
-        id: newId('l'), subjectId: 's' + si, teacherIds: [t.id], roomIds: room && (room !== 'Fen Laboratuvarı' || ci >= p.classes.length / 2) ? [p.rooms.find(r => r.name === room)!.id] : [],
+        id: newId('l'), subjectId: 's' + si, teacherIds: [t.id], roomIds: withRooms && room && (room !== 'Fen Laboratuvarı' || ci >= p.classes.length / 2) ? [p.rooms.find(r => r.name === room)!.id] : [],
         classes: [{ classId: c.id, groupId: null }], split: defaultSplit(hours), sameDayOk: false, link: '',
       })
     })

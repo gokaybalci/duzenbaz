@@ -1,4 +1,4 @@
-//! Dersplan desktop shell.
+//! Düzenbaz desktop shell.
 //!
 //! All school data stays on this computer: the UI is bundled into the binary, the
 //! content security policy forbids any network access, and the page can only touch
@@ -23,7 +23,7 @@ struct OpenedFile {
     data: Vec<u8>,
 }
 
-const PROJECT_EXTS: [&str; 3] = ["dersplan", "json", "dprg"];
+const PROJECT_EXTS: [&str; 3] = ["duzenbaz", "json", "dprg"];
 
 fn file_name(p: &Path) -> String {
     p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
@@ -37,7 +37,7 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
 
 fn read_project(path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
     let data = fs::read(&path).map_err(|e| e.to_string())?;
-    // A Dagitmatik import must be saved as a new Dersplan file, never over the .dprg.
+    // A Dagitmatik import must be saved as a new Düzenbaz file, never over the .dprg.
     *cur.0.lock().unwrap() = if has_ext(&path, &["dprg"]) { None } else { Some(path.clone()) };
     Ok(OpenedFile { name: file_name(&path), data })
 }
@@ -63,7 +63,7 @@ fn documents_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
 
 #[tauri::command]
 async fn open_project(app: tauri::AppHandle, cur: State<'_, CurrentFile>) -> Result<Option<OpenedFile>, String> {
-    let mut dlg = app.dialog().file().add_filter("Dersplan / Dağıtmatik", &PROJECT_EXTS);
+    let mut dlg = app.dialog().file().add_filter("Düzenbaz / Dağıtmatik", &PROJECT_EXTS);
     if let Some(d) = documents_dir(&app) {
         dlg = dlg.set_directory(d);
     }
@@ -88,7 +88,7 @@ async fn save_project(
     let path = match existing {
         Some(p) => p,
         None => {
-            let mut dlg = app.dialog().file().add_filter("Dersplan", &["dersplan"]).set_file_name(&suggested);
+            let mut dlg = app.dialog().file().add_filter("Düzenbaz", &["duzenbaz"]).set_file_name(&suggested);
             if let Some(d) = documents_dir(&app) {
                 dlg = dlg.set_directory(d);
             }
@@ -96,7 +96,7 @@ async fn save_project(
                 Some(fp) => {
                     let mut p = fp.into_path().map_err(|e| e.to_string())?;
                     if p.extension().is_none() {
-                        p.set_extension("dersplan");
+                        p.set_extension("duzenbaz");
                     }
                     p
                 }
@@ -142,7 +142,7 @@ fn cpu_count() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2)
 }
 
-/// A project file passed on the command line (double-clicking a .dersplan file).
+/// A project file passed on the command line (double-clicking a .duzenbaz file).
 #[tauri::command]
 fn startup_file(cur: State<'_, CurrentFile>) -> Option<OpenedFile> {
     let path = std::env::args_os().skip(1).map(PathBuf::from).find(|p| has_ext(p, &PROJECT_EXTS) && p.is_file())?;
@@ -156,5 +156,5 @@ pub fn run() {
         .manage(CurrentFile::default())
         .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, save_export, startup_file, cpu_count])
         .run(tauri::generate_context!())
-        .expect("error while running Dersplan");
+        .expect("error while running Düzenbaz");
 }

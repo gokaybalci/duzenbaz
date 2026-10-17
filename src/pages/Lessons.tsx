@@ -92,7 +92,7 @@ export function LessonsPage() {
         <div className="card table-wrap">
           {shown.length === 0 ? <div className="empty">{t('No lessons yet.')}</div> : (
             <table className="data">
-              <thead><tr><th>{t('Class')}</th><th>{t('Subject')}</th><th>{t('Teacher')}</th><th>{t('Room')}</th><th className="num">{t('Hours')}</th><th>{t('Blocks')}</th><th>{t('Parallel link')}</th><th style={{ width: 120 }}></th></tr></thead>
+              <thead><tr><th>{t('Class')}</th><th>{t('Subject')}</th><th>{t('Teacher')}</th>{p.useRooms && <th>{t('Room')}</th>}<th className="num">{t('Hours')}</th><th>{t('Blocks')}</th><th>{t('Parallel link')}</th><th style={{ width: 120 }}></th></tr></thead>
               <tbody>
                 {shown.map(l => {
                   const s = n.subject.get(l.subjectId)
@@ -101,7 +101,7 @@ export function LessonsPage() {
                       <td>{l.classes.map(c => classLabel(n, c, false)).join(', ')}</td>
                       <td><span className="chip"><span className="dot" style={{ background: s?.color }} />{s?.name ?? '?'}</span></td>
                       <td>{l.teacherIds.map(x => n.teacher.get(x)?.name ?? '?').join(', ') || <span className="badge warn">{t('none')}</span>}</td>
-                      <td>{l.roomIds.map(x => n.room.get(x)?.name ?? '?').join(', ')}</td>
+                      {p.useRooms && <td>{l.roomIds.filter(x => n.room.has(x)).map(x => n.room.get(x)?.name).join(', ')}</td>}
                       <td className="num">{lessonHours(l)}</td>
                       <td>{splitLabel(l.split)}{l.sameDayOk && <span className="hint"> ({t('same day ok')})</span>}</td>
                       <td>{l.link && <span className="chip"><Icon n="link" /> {l.link}</span>}</td>
@@ -167,9 +167,9 @@ function LessonForm({ p, value, onChange }: { p: Project; value: Lesson; onChang
         <label className="field" style={{ minWidth: 200 }}>{t('Teacher(s)')}
           <ChipSelect items={p.teachers} value={value.teacherIds} onChange={v => onChange({ ...value, teacherIds: v })} placeholder={t('+ teacher…')} />
         </label>
-        <label className="field" style={{ minWidth: 160 }}>{t('Room(s)')}
+        {p.useRooms && <label className="field" style={{ minWidth: 160 }}>{t('Room(s)')}
           <ChipSelect items={p.rooms} value={value.roomIds} onChange={v => onChange({ ...value, roomIds: v })} placeholder={t('+ room…')} />
-        </label>
+        </label>}
       </div>
       <div className="row" style={{ alignItems: 'end', gap: 16 }}>
         <label className="field">{t('Hours / week')}

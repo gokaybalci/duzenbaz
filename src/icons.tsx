@@ -38,6 +38,7 @@ const P: Record<string, string> = {
   swap: 'M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4',
   minus: 'M5 12h14',
   plus: 'M12 5v14M5 12h14',
+  palette: 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-1.2-1-1.5-1-2.5s.8-1.5 2-1.5H17a4 4 0 0 0 4-4c0-4.7-4-8.5-9-8.5zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01'
 }
 
 export type IconName = keyof typeof P

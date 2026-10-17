@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { tr } from './i18n.tr'
 
 export type Lang = 'en' | 'tr'
-const KEY = 'dersplan.lang'
+const KEY = 'duzenbaz.lang'
 let lang: Lang = (() => {
   try {
     const v = localStorage.getItem(KEY)

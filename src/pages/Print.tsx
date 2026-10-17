@@ -103,11 +103,11 @@ export function PrintPage() {
       <div className="card pad stack no-print">
         <div className="row">
           <select value={what} onChange={e => { setWhat(e.target.value as What); setOnly(null) }}>
-            {WHAT.map(([w, l]) => <option key={w} value={w}>{t(l)}</option>)}
+            {WHAT.filter(([w]) => w !== 'room' || p.useRooms).map(([w, l]) => <option key={w} value={w}>{t(l)}</option>)}
           </select>
           {opt('short', 'Short names')}
           {opt('showTeachers', 'Show teachers')}
-          {opt('showRooms', 'Show rooms')}
+          {p.useRooms && opt('showRooms', 'Show rooms')}
           {opt('colored', 'Colors')}
           {isEntity && opt('lessonList', 'Lesson list')}
           {isEntity && opt('signature', 'Principal signature')}

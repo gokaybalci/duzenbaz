@@ -41,7 +41,7 @@ export function buildIndex(p: Project): TTIndex {
   }
   for (const c of p.classes) mk(grids.class, c.id)
   for (const t of p.teachers) mk(grids.teacher, t.id)
-  for (const r of p.rooms) mk(grids.room, r.id)
+  if (p.useRooms) for (const r of p.rooms) mk(grids.room, r.id)
   const unplaced: UnplacedCard[] = []
   for (const l of p.lessons)
     l.split.forEach((len, part) => {
@@ -85,7 +85,7 @@ export function names(p: Project): Names {
   return {
     subject: new Map(p.subjects.map(s => [s.id, s])),
     teacher: new Map(p.teachers.map(s => [s.id, s])),
-    room: new Map(p.rooms.map(s => [s.id, s])),
+    room: new Map((p.useRooms ? p.rooms : []).map(s => [s.id, s])),
     class: new Map(p.classes.map(s => [s.id, s])),
   }
 }
@@ -105,7 +105,7 @@ export function cardLines(n: Names, l: Lesson, kind: Kind, short: boolean, viewe
   const subj = n.subject.get(l.subjectId)
   const title = pick(subj, short)
   const teachers = l.teacherIds.map(t => pick(n.teacher.get(t), short)).join(', ')
-  const rooms = l.roomIds.map(r => pick(n.room.get(r), short)).join(', ')
+  const rooms = l.roomIds.filter(r => n.room.has(r)).map(r => pick(n.room.get(r), short)).join(', ')
   const classes = l.classes.map(c => classLabel(n, c, true)).join(', ')
   const lines: string[] = []
   if (kind === 'class') {

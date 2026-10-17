@@ -1,0 +1,10 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Duzenbaz",
+  "bundle": {
+    "linux": {
+      "deb": { "desktopTemplate": "linux.desktop" },
+      "rpm": { "desktopTemplate": "linux.desktop" }
+    }
+  }
+}

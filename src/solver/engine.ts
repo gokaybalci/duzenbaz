@@ -28,7 +28,7 @@ export interface Progress {
 
 export type IssueKind =
   | 'noSlot' | 'teacherClash' | 'roomClash' | 'classClash' | 'sameDay'
-  | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload'
+  | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap'
 
 export interface Issue {
   kind: IssueKind
@@ -88,6 +88,10 @@ export class Solver {
   /** how many lessons a resource can host at once (rooms with quantity > 1) */
   cap: Int32Array
   gapW: Float64Array
+  /** 1 = class row that must be gap-free and start at the first open period (MEB rule) */
+  compact: Uint8Array
+  /** 1 = slot is open for this resource and for the school */
+  open: Uint8Array
   maxGaps: Int32Array
   maxPerDay: Int32Array
   maxDays: Int32Array
@@ -130,7 +134,8 @@ export class Solver {
     const w = p.weights
     for (const t of p.teachers)
       addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, t.maxDays || 0, 0)
-    for (const r of p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
+    // Rooms only matter when the school chose to use them.
+    for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
     for (const c of p.classes) {
       if (!c.groups.length) {
@@ -149,6 +154,9 @@ export class Solver {
     this.cap = Int32Array.from(caps)
     this.gapW = Float64Array.from(gapW); this.maxGaps = Int32Array.from(maxGaps)
     this.maxPerDay = Int32Array.from(maxPerDay); this.maxDays = Int32Array.from(maxDays); this.leadW = Float64Array.from(leadW)
+    this.compact = Uint8Array.from(this.resType.map(t => (t === RES_CLASS && p.strictClasses !== false ? 1 : 0)))
+    this.open = new Uint8Array(R * S)
+    for (let r = 0; r < R; r++) for (let s = 0; s < S; s++) this.open[r * S + s] = resAvail[r][s] !== '0' && p.avail[s] !== '0' ? 1 : 0
     this.spreadW = w.spread
 
     const subj = new Map(p.subjects.map(s => [s.id, s]))
@@ -242,26 +250,52 @@ export class Solver {
     this.units.forEach((u, i) => u.res.forEach(r => this.unitsOfRes[r].push(i)))
   }
 
-  /** Recompute hard count and soft penalty of resource r on day d. */
-  rowEval(r: number, d: number) {
+  // Scratch results of dayStats (kept as fields to avoid allocations in the hot loop).
+  private dsHours = 0
+  private dsConf = 0
+  private dsGaps = 0
+  private dsLead = 0
+
+  /** Lessons, double bookings, blank open periods between lessons, and open periods before the first lesson. */
+  dayStats(r: number, d: number) {
     const P = this.P, base = r * this.S + d * P
-    let first = -1, last = -1, hours = 0, hard = 0, soft = 0
+    let first = -1, last = -1, hours = 0, conf = 0
     for (let p = 0; p < P; p++) {
       const c = this.occ[base + p]
       if (c) {
         if (first < 0) first = p
         last = p; hours++
-        if (c > this.cap[r]) hard += c - this.cap[r]
+        if (c > this.cap[r]) conf += c - this.cap[r]
       }
     }
+    let gaps = 0, lead = 0
     if (hours) {
-      const gaps = last - first + 1 - hours
-      soft = gaps * this.gapW[r] + first * this.leadW[r]
+      for (let p = first + 1; p < last; p++) if (!this.occ[base + p] && this.open[base + p]) gaps++
+      for (let p = 0; p < first; p++) if (this.open[base + p]) lead++
+    }
+    this.dsHours = hours; this.dsConf = conf; this.dsGaps = gaps; this.dsLead = lead
+  }
+
+  /** Hard violations and soft penalty of one resource-day, from the last dayStats call. */
+  dayCost(r: number): [number, number] {
+    const hours = this.dsHours, gaps = this.dsGaps, lead = this.dsLead
+    let hard = this.dsConf, soft = 0
+    if (hours) {
+      soft = gaps * this.gapW[r] + lead * this.leadW[r]
+      if (this.compact[r]) hard += gaps + lead
       const mg = this.maxGaps[r]
       if (mg >= 0 && gaps > mg) hard += gaps - mg
       const mpd = this.maxPerDay[r]
       if (mpd > 0 && hours > mpd) hard += hours - mpd
     }
+    return [hard, soft]
+  }
+
+  /** Recompute hard count and soft penalty of resource r on day d. */
+  rowEval(r: number, d: number) {
+    this.dayStats(r, d)
+    const hours = this.dsHours
+    const [hard, soft] = this.dayCost(r)
     const i = r * this.D + d
     this.hard += hard - this.dayHard[i]
     this.soft += soft - this.daySoft[i]
@@ -506,25 +540,15 @@ export class Solver {
 
   /** Split the current cost into hard violation count and soft penalty. */
   parts() {
-    const { D, P, S } = this
+    const D = this.D
     let hard = 0, soft = 0
     for (let r = 0; r < this.resName.length; r++) {
       let days = 0
       for (let d = 0; d < D; d++) {
-        let first = -1, last = -1, hours = 0
-        for (let p = 0; p < P; p++) {
-          const c = this.occ[r * S + d * P + p]
-          if (!c) continue
-          if (first < 0) first = p
-          last = p; hours++
-          if (c > this.cap[r]) hard += c - this.cap[r]
-        }
-        if (!hours) continue
-        days++
-        const gaps = last - first + 1 - hours
-        soft += gaps * this.gapW[r] + first * this.leadW[r]
-        if (this.maxGaps[r] >= 0 && gaps > this.maxGaps[r]) hard += gaps - this.maxGaps[r]
-        if (this.maxPerDay[r] > 0 && hours > this.maxPerDay[r]) hard += hours - this.maxPerDay[r]
+        this.dayStats(r, d)
+        if (this.dsHours) days++
+        const [h, so] = this.dayCost(r)
+        hard += h; soft += so
       }
       if (this.maxDays[r] > 0 && days > this.maxDays[r]) hard += days - this.maxDays[r]
     }
@@ -554,12 +578,11 @@ export class Solver {
     for (let r = 0; r < this.resName.length; r++) {
       let days = 0
       for (let d = 0; d < D; d++) {
-        let first = -1, last = -1, hours = 0
+        let hours = 0
         for (let p = 0; p < P; p++) {
           const c = this.occ[r * S + d * P + p]
           if (!c) continue
-          if (first < 0) first = p
-          last = p; hours++
+          hours++
           if (c > this.cap[r]) {
             const cards = this.units.flatMap((u, i) => {
               const s = this.pos[i]
@@ -570,8 +593,10 @@ export class Solver {
         }
         if (!hours) continue
         days++
-        const gaps = last - first + 1 - hours
-        if (this.resType[r] === RES_CLASS) classGaps += gaps
+        this.dayStats(r, d)
+        const gaps = this.dsGaps
+        if (this.resType[r] === RES_CLASS) classGaps += gaps + this.dsLead
+        if (this.compact[r] && (gaps || this.dsLead)) issues.push({ kind: 'classGap', who: this.resName[r], day: d, detail: String(gaps + this.dsLead) })
         if (this.resType[r] === RES_TEACHER) teacherGaps += gaps
         if (this.maxGaps[r] >= 0 && gaps > this.maxGaps[r]) issues.push({ kind: 'maxGaps', who: this.resName[r], day: d, detail: `${gaps} > ${this.maxGaps[r]}` })
         if (this.maxPerDay[r] > 0 && hours > this.maxPerDay[r]) issues.push({ kind: 'maxPerDay', who: this.resName[r], day: d, detail: `${hours} > ${this.maxPerDay[r]}` })

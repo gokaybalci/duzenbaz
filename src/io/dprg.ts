@@ -86,5 +86,7 @@ export function dprgXmlToProject(xml: string, parser: DOMParser = new DOMParser(
     subjects, teachers, rooms, classes, lessons,
     placements: {},
     weights: { ...DEFAULT_WEIGHTS },
+    strictClasses: true,
+    useRooms: lessons.some(l => l.roomIds.length > 0),
   }
 }

@@ -119,7 +119,7 @@ export function ToastHost() {
   return msg ? <div className="toast">{msg}</div> : null
 }
 
-export function Menu({ label, children }: { label: ReactNode; children: (close: () => void) => ReactNode }) {
+export function Menu({ label, children, up, className }: { label: ReactNode; children: (close: () => void) => ReactNode; up?: boolean; className?: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -130,8 +130,8 @@ export function Menu({ label, children }: { label: ReactNode; children: (close: 
   }, [open])
   return (
     <div className="menu" ref={ref}>
-      <button className="btn" onClick={() => setOpen(o => !o)}>{label}</button>
-      {open && <div className="menu-pop">{children(() => setOpen(false))}</div>}
+      <button className={className ?? 'btn'} onClick={() => setOpen(o => !o)}>{label}</button>
+      {open && <div className={`menu-pop ${up ? 'up' : ''}`}>{children(() => setOpen(false))}</div>}
     </div>
   )
 }

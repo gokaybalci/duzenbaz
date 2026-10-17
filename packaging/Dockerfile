@@ -1,4 +1,4 @@
-# Build environment for Dersplan desktop packages.
+# Build environment for Düzenbaz desktop packages.
 # Linux packages are built on Ubuntu 22.04 (glibc 2.35) so the AppImage runs on most current distributions.
 # The Windows installer is built on Ubuntu 24.04, whose NSIS (3.09+) is new enough for Tauri's installer script.
 ARG UBUNTU=22.04

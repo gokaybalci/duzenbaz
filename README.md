@@ -1,4 +1,4 @@
-# Dersplan — school timetable builder
+# Düzenbaz — school timetable builder
 
 A fast desktop timetable (ders programı) generator for Windows and Linux, built as a modern alternative to Dagitmatik.
 Classes, teachers, rooms and lessons go in; a conflict-free weekly timetable comes out, with printable
@@ -6,7 +6,7 @@ class / teacher / room sheets, an all-classes overview ("çarşaf liste") and da
 
 ## Desktop app (recommended for real school data)
 
-Dersplan ships as a small native desktop app built with [Tauri](https://tauri.app). It uses the operating
+Düzenbaz ships as a small native desktop app built with [Tauri](https://tauri.app). It uses the operating
 system's own web engine, so there is no bundled browser: installers are a few MB and idle CPU is ~0.
 
 **Your data never leaves the computer:**
@@ -15,13 +15,13 @@ system's own web engine, so there is no bundled browser: installers are a few MB
 - the page cannot touch the disk by itself; files are read and written only by the app's own Rust commands
   (`src-tauri/src/lib.rs`), always after a native Open/Save dialog the user confirms,
 - the working copy is stored in the user's own profile folder
-  (Windows: `%LOCALAPPDATA%\com.dersplan.desktop`, Linux: `~/.local/share/com.dersplan.desktop`),
+  (Windows: `%LOCALAPPDATA%\com.duzenbaz.desktop`, Linux: `~/.local/share/com.duzenbaz.desktop`),
 - saves are atomic (temporary file + rename), so a power cut can't corrupt a project.
 
 | Platform | Package | Notes |
 | --- | --- | --- |
-| Windows 10 / 11 (64-bit) | `Dersplan_x.y.z_x64-setup.exe` | Installs per user, no admin rights needed. Uses Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; otherwise the installer fetches it once. |
-| Linux (most distributions) | `Dersplan_x.y.z_amd64.AppImage` | `chmod +x` and run. Built on Ubuntu 22.04 (glibc 2.35) so it runs on Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+, etc. |
+| Windows 10 / 11 (64-bit) | `Duzenbaz_x.y.z_x64-setup.exe` | Installs per user, no admin rights needed. Uses Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; otherwise the installer fetches it once. |
+| Linux (most distributions) | `Duzenbaz_x.y.z_amd64.AppImage` | `chmod +x` and run. Built on Ubuntu 22.04 (glibc 2.35) so it runs on Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+, etc. |
 | Debian/Ubuntu, Fedora/openSUSE | `.deb`, `.rpm` | Native packages, if you prefer those. |
 
 **Windows 8 / 8.1 and 7 are not supported.** Microsoft stopped WebView2 (the web engine Windows apps like this one use)

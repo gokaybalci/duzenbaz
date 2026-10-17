@@ -1,0 +1,13 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment=Okul ders programı hazırlama
+Exec={{exec}}
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name=Düzenbaz
+GenericName=Ders Programı
+Terminal=false
+Type=Application
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}

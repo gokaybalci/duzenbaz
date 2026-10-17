@@ -94,7 +94,7 @@ export function TimetablePage() {
       <div className="page-head">
         <h2>{t('Timetable')}</h2>
         <div className="btn-group">
-          {KINDS.map(([kk, label]) => <button key={kk} className={`btn ${kind === kk ? 'on' : ''}`} onClick={() => setKind(kk)}>{t(label)}</button>)}
+          {KINDS.filter(([kk]) => kk !== 'room' || p.useRooms).map(([kk, label]) => <button key={kk} className={`btn ${kind === kk ? 'on' : ''}`} onClick={() => setKind(kk)}>{t(label)}</button>)}
           <button className={`btn ${kind === 'all' ? 'on' : ''}`} onClick={() => setKind('all')}>{t('Overview')}</button>
         </div>
         {placed > 0 && <>
@@ -173,6 +173,15 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
   const dragLen = dragId ? lessonOf(p, dragId)?.split[parseCardId(dragId).part] ?? 1 : 1
   // While a block is selected (click-to-move), show where it may go.
   const hint = !dragId && selected ? slotStatuses(p, idx, selected) : null
+  // MEB rule: mark open periods that are empty before the first lesson or between lessons of a class day.
+  const blank = new Set<number>()
+  if (kind === 'class' && p.strictClasses)
+    for (let d = 0; d < p.days.length; d++) {
+      const open = (s: number) => ent.avail[s] !== '0' && p.avail[s] !== '0'
+      let last = -1
+      for (let pp = 0; pp < P; pp++) if (grid[d * P + pp].length) last = pp
+      for (let pp = 0; pp < last; pp++) { const s = d * P + pp; if (!grid[s].length && open(s)) blank.add(s) }
+    }
   const st = statuses ?? hint
 
   return (
@@ -188,14 +197,14 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
               const s = di * P + pi
               const cards = grid[s]
               const closed = ent.avail[s] === '0' || p.avail[s] === '0'
-              let cls = closed ? 'closed' : ''
+              let cls = closed ? 'closed' : blank.has(s) ? 'blank' : ''
               if (st && st[s] !== 'closed') cls += ' drop-' + st[s]
               if (dragId && over !== null && s >= over && s < over + dragLen && Math.floor(over / P) === di && statuses?.[over] !== 'closed') {
                 const occ = grid[over].filter(c => c.cardId !== dragId && c.offset === 0)
                 cls += occ.length === 1 && occ[0].len === dragLen && !occ[0].locked && p.placements[dragId] ? ' drop-swap' : ' drop-target'
               }
               return (
-                <td key={di} className={cls} data-slot={s} onClick={() => { if (!cards.length) onCellClick(s) }}>
+                <td key={di} className={cls} data-slot={s} title={blank.has(s) ? t('Blank period in class schedule') : undefined} onClick={() => { if (!cards.length) onCellClick(s) }}>
                   {cards.map(c => <Card key={c.cardId} c={c} n={n} kind={kind} viewer={id} clash={!!idx.clashSlots.get(c.cardId)?.has(s)}
                     dragging={dragId === c.cardId} selected={selected === c.cardId} startDrag={startDrag} />)}
                 </td>

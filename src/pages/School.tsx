@@ -97,15 +97,29 @@ export function SchoolPage() {
       </div>
 
       <div className="card pad stack">
+        <h3>{t('Rules')}</h3>
+        <label className="check">
+          <input type="checkbox" checked={p.strictClasses} onChange={e => update(d => { d.strictClasses = e.target.checked })} />
+          <span><b>{t('No blank periods in class schedules (MEB rule)')}</b><br />
+            <span className="hint">{t('Every class day starts at the first lesson period and has no empty periods between lessons. The distribution treats any blank period as an error.')}</span></span>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={p.useRooms} onChange={e => update(d => { d.useRooms = e.target.checked })} />
+          <span><b>{t('Use rooms (derslik)')}</b><br />
+            <span className="hint">{t('Leave off if every class has its own fixed classroom. Turn on only to share special rooms such as labs or the gym.')}</span></span>
+        </label>
+      </div>
+
+      <div className="card pad stack">
         <h3>{t('Distribution preferences')}</h3>
         <p className="hint" style={{ margin: 0 }}>{t('Higher numbers mean the generator tries harder to avoid it. Conflicts and availability are always respected.')}</p>
         <div className="row" style={{ alignItems: 'end', gap: 16 }}>
           {([
-            ['classGap', 'Gaps in class schedules'],
-            ['teacherGap', 'Gaps in teacher schedules'],
-            ['classLateStart', 'Classes starting late'],
-            ['spread', 'Same lesson on consecutive days'],
-          ] as const).map(([k, label]) => (
+            ...(p.strictClasses ? [] : [['classGap', 'Gaps in class schedules'] as const]),
+            ['teacherGap', 'Gaps in teacher schedules'] as const,
+            ...(p.strictClasses ? [] : [['classLateStart', 'Classes starting late'] as const]),
+            ['spread', 'Same lesson on consecutive days'] as const,
+          ]).map(([k, label]) => (
             <label key={k} className="field">{t(label)}
               <input type="number" min={0} value={p.weights[k]} style={{ width: 110 }} onChange={e => update(d => { d.weights[k] = Math.max(0, +e.target.value || 0) }, 'w.' + k)} />
             </label>

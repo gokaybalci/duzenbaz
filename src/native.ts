@@ -1,6 +1,7 @@
 // Bridge to the desktop shell (src-tauri). `native` is undefined when running in a plain browser.
 
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 export interface NativeFile { name: string; data: Uint8Array }
 
@@ -17,6 +18,7 @@ export const native = inTauri ? {
   saveExport: (name: string, data: Uint8Array, ext: 'html' | 'csv') => invoke<string | null>('save_export', { name, data: Array.from(data), ext }),
   startupFile: async () => toFile(await invoke('startup_file')),
   cpuCount: () => invoke<number>('cpu_count'),
+  setZoom: (scale: number) => getCurrentWebview().setZoom(scale),
 } : undefined
 
 export const isDesktop = !!native
