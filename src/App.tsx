@@ -196,7 +196,7 @@ function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate
     const e = emptyProject()
     e.days = DAY_NAMES[document.documentElement.lang === 'tr' ? 'tr' : 'en'].slice(0, 5)
     e.schoolType = type
-    if (type === 'ortaokul') addMandatorySubjects(e)
+    addMandatorySubjects(e, type)
     replaceProject(e)
     onCreate()
   }
@@ -209,10 +209,11 @@ function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate
       <div className="stack" style={{ maxWidth: 420 }}>
         <p className="hint" style={{ margin: 0 }}>{t('Start a new empty project? Unsaved changes will be lost (you can still undo).')}</p>
         <b>{t('School type')}</b>
+        <span className="hint">{t('The mandatory subjects of the chosen school type are added to Subjects for you.')}</span>
         {SCHOOL_TYPES.map(([v, label]) => (
           <label key={v} className="check">
             <input type="radio" name="schoolType" checked={type === v} onChange={() => setType(v)} />
-            <span>{label}{v === 'ortaokul' && <><br /><span className="hint">{t('The mandatory ortaokul subjects are added for you.')}</span></>}</span>
+            <span>{label}</span>
           </label>
         ))}
       </div>

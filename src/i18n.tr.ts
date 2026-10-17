@@ -22,7 +22,7 @@ export const tr: Record<string, string> = {
   'Untitled school': 'Adsız okul',
   'New project': 'Yeni proje',
   'School type': 'Okul türü',
-  'The mandatory ortaokul subjects are added for you.': 'Ortaokul zorunlu dersleri Dersler bölümüne otomatik eklenir.',
+  'The mandatory subjects of the chosen school type are added to Subjects for you.': 'Seçilen okul türünün zorunlu dersleri Dersler bölümüne otomatik eklenir.',
   '{n} mandatory subjects added to Subjects': '{n} zorunlu ders Dersler bölümüne eklendi',
   'Open… (.duzenbaz or Dagitmatik .dprg)': 'Aç… (.duzenbaz veya Dağıtmatik .dprg)',
   'Save as…': 'Farklı kaydet…',

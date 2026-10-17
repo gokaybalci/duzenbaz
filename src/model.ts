@@ -154,26 +154,66 @@ export function emptyProject(): Project {
   }
 }
 
-// Ortaokul (5-8) zorunlu dersleri: [ad, kısa ad, aynı sayılan diğer adlar]
-export const ORTAOKUL_SUBJECTS: [string, string, string[]][] = [
-  ['Türkçe', 'TÜR', []],
-  ['Matematik', 'MAT', []],
-  ['Fen Bilimleri', 'FEN', []],
-  ['Sosyal Bilgiler', 'SOS', []],
-  ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
-  ['Yabancı Dil', 'YDL', ['İngilizce', 'Almanca', 'Fransızca', 'Arapça']],
-  ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
-  ['Görsel Sanatlar', 'GÖR', ['Resim']],
-  ['Müzik', 'MÜZ', []],
-  ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
-  ['Bilişim Teknolojileri ve Yazılım', 'BİL', ['Bilişim Teknolojileri']],
-  ['Teknoloji ve Tasarım', 'TTS', []],
-]
+const LANG = ['İngilizce', 'Almanca', 'Fransızca', 'Arapça', '1. Yabancı Dil']
+
+// Zorunlu dersler: [ad, kısa ad, aynı sayılan diğer adlar]
+export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string, string[]][]> = {
+  // İlkokul (1-4)
+  ilkokul: [
+    ['Türkçe', 'TÜR', []],
+    ['Matematik', 'MAT', []],
+    ['Hayat Bilgisi', 'HAY', []],
+    ['Fen Bilimleri', 'FEN', []],
+    ['Sosyal Bilgiler', 'SOS', []],
+    ['Yabancı Dil', 'YDL', LANG],
+    ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
+    ['Görsel Sanatlar', 'GÖR', ['Resim']],
+    ['Müzik', 'MÜZ', []],
+    ['Beden Eğitimi ve Oyun', 'BEO', []],
+    ['Beden Eğitimi ve Spor', 'BES', []],
+    ['Trafik Güvenliği', 'TRF', []],
+    ['İnsan Hakları, Yurttaşlık ve Demokrasi', 'İHY', ['İnsan Hakları Yurttaşlık ve Demokrasi']],
+  ],
+  // Ortaokul (5-8)
+  ortaokul: [
+    ['Türkçe', 'TÜR', []],
+    ['Matematik', 'MAT', []],
+    ['Fen Bilimleri', 'FEN', []],
+    ['Sosyal Bilgiler', 'SOS', []],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
+    ['Yabancı Dil', 'YDL', LANG],
+    ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
+    ['Görsel Sanatlar', 'GÖR', ['Resim']],
+    ['Müzik', 'MÜZ', []],
+    ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
+    ['Bilişim Teknolojileri ve Yazılım', 'BİL', ['Bilişim Teknolojileri']],
+    ['Teknoloji ve Tasarım', 'TTS', []],
+  ],
+  // Lise (9-12) ortak dersler; sanat grubundan okul birini seçer, ikisi de eklenir
+  lise: [
+    ['Türk Dili ve Edebiyatı', 'TDE', ['Edebiyat', 'Türk Edebiyatı']],
+    ['Matematik', 'MAT', []],
+    ['Tarih', 'TAR', []],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
+    ['Coğrafya', 'COĞ', []],
+    ['Fizik', 'FİZ', []],
+    ['Kimya', 'KİM', []],
+    ['Biyoloji', 'BİY', []],
+    ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
+    ['Yabancı Dil', 'YDL', LANG],
+    ['Felsefe', 'FEL', []],
+    ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
+    ['Görsel Sanatlar', 'GÖR', ['Resim']],
+    ['Müzik', 'MÜZ', []],
+    ['Sağlık Bilgisi ve Trafik Kültürü', 'SBT', []],
+  ],
+}
 
 const subjectKey = (name: string) => name.toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]/gu, '')
 
-/** Add the mandatory subjects the project does not have yet (matched by name, ignoring case and punctuation). Returns how many were added. */
-export function addMandatorySubjects(p: Project, list = ORTAOKUL_SUBJECTS): number {
+/** Add the school type's mandatory subjects the project does not have yet (matched by name, ignoring case and punctuation). Returns how many were added. */
+export function addMandatorySubjects(p: Project, type: SchoolType): number {
+  const list = type ? MANDATORY_SUBJECTS[type] : []
   const have = new Set(p.subjects.map(s => subjectKey(s.name)))
   const missing = list.filter(([name, , alt]) => ![name, ...alt].some(n => have.has(subjectKey(n))))
   for (const [name, short] of missing)
