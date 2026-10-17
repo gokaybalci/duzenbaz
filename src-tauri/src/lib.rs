@@ -37,7 +37,7 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
 
 fn read_project(path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
     let data = fs::read(&path).map_err(|e| e.to_string())?;
-    // A Dagitmatik import must be saved as a new Düzenbaz file, never over the .dprg.
+    // An imported .dprg must be saved as a new Düzenbaz file, never over the .dprg.
     *cur.0.lock().unwrap() = if has_ext(&path, &["dprg"]) { None } else { Some(path.clone()) };
     Ok(OpenedFile { name: file_name(&path), data })
 }

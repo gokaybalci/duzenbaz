@@ -155,7 +155,7 @@ export function LessonsPage() {
 
 const sameRef = (a: ClassRef, b: ClassRef) => a.classId === b.classId && a.groupId === b.groupId
 
-/** Dagitmatik-style assignment: pick a subject, then tick the classes this teacher teaches it to. */
+/** Teacher-first assignment: pick a subject, then tick the classes this teacher teaches it to. */
 function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
   const n = names(p)
   const [subjectId, setSubjectId] = useState('')
