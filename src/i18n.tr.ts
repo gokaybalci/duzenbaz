@@ -220,9 +220,14 @@ export const tr: Record<string, string> = {
   'Lessons with the same link are always scheduled at the same time (e.g. parallel electives of different groups).': 'Aynı bağa sahip dersler her zaman aynı saate yerleştirilir (ör. farklı grupların seçmeli dersleri).',
   'Blocks may be on the same day': 'Bloklar aynı güne gelebilir',
   'This lesson is taught to {list} together at the same time.': 'Bu ders {list} için aynı saatte birlikte işlenir.',
-  'Copies the {n} single-class lessons of this class.': 'Bu sınıfın tek sınıflık {n} dersini kopyalar.',
   'Keep the same teachers': 'Aynı öğretmenler kalsın',
   'Copy {n} lessons': '{n} dersi kopyala',
+  'Copies {n} single-class lessons.': '{n} tek sınıflık ders kopyalanır.',
+  '{n} lessons shared by several classes are skipped.': 'Birden çok sınıfın ortak {n} dersi atlanır.',
+  'Select all': 'Hepsini seç',
+  'Select': 'Seç',
+  '{n} selected': '{n} seçili',
+  'Delete {n} selected lessons?': 'Seçili {n} ders silinsin mi?',
   '{n} lessons copied': '{n} ders kopyalandı',
 
   // generate

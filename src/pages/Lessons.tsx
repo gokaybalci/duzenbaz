@@ -23,13 +23,21 @@ export function LessonsPage() {
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [draft, setDraft] = useState<Lesson>(() => blankLesson({ kind: 'all' }))
   const [editing, setEditing] = useState<Lesson | null>(null)
-  const [copyOpen, setCopyOpen] = useState(false)
+  const [copyOf, setCopyOf] = useState<Lesson[] | null>(null)
+  const [sel, setSel] = useState<Set<string>>(new Set())
   const n = useMemo(() => names(p), [p])
 
   const shown = useMemo(() => p.lessons.filter(l =>
     filter.kind === 'all' ? true : filter.kind === 'class' ? l.classes.some(c => c.classId === filter.id) : l.teacherIds.includes(filter.id)), [p.lessons, filter])
 
-  const choose = (f: Filter) => { setFilter(f); setDraft(blankLesson(f)) }
+  const choose = (f: Filter) => { setFilter(f); setDraft(blankLesson(f)); setSel(new Set()) }
+  const picked = shown.filter(l => sel.has(l.id))
+  const toggle = (id: string, on: boolean) => { const s = new Set(sel); if (on) s.add(id); else s.delete(id); setSel(s) }
+  const delPicked = () => {
+    if (!confirm(t('Delete {n} selected lessons?', { n: picked.length }))) return
+    update(d => { d.lessons = d.lessons.filter(l => !sel.has(l.id)); prunePlacements(d) })
+    setSel(new Set())
+  }
   const valid = (l: Lesson) => l.subjectId && l.classes.length && l.split.length
 
   const add = () => {
@@ -75,7 +83,7 @@ export function LessonsPage() {
             {filter.kind === 'all' ? t('Lessons') : filter.kind === 'class' ? n.class.get(filter.id)?.name : n.teacher.get(filter.id)?.name}
             <span className="hint" style={{ fontWeight: 400, fontSize: 14, marginLeft: 8 }}>{t('{n} lessons · {h} hours/week', { n: shown.length, h: total })}{filter.kind === 'class' ? ` / ${S}` : ''}</span>
           </h2>
-          {filter.kind === 'class' && shown.length > 0 && <button className="btn" onClick={() => setCopyOpen(true)}>{t('Copy lessons to other classes…')}</button>}
+          {filter.kind === 'class' && shown.length > 0 && <button className="btn" onClick={() => setCopyOf(shown)}>{t('Copy lessons to other classes…')}</button>}
         </div>
 
         {(!p.subjects.length || !p.classes.length) && <div className="card pad hint">{t('Add subjects, classes and teachers first. Then define which lessons each class takes here.')}</div>}
@@ -92,14 +100,21 @@ export function LessonsPage() {
         </div>
 
         <div className="card table-wrap">
-          {shown.length === 0 ? <div className="empty">{t('No lessons yet.')}</div> : (
+          {shown.length === 0 ? <div className="empty">{t('No lessons yet.')}</div> : (<>
+            <div className="row" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
+              <label className="check"><input type="checkbox" checked={picked.length === shown.length} onChange={e => setSel(new Set(e.target.checked ? shown.map(l => l.id) : []))} />{t('Select all')}</label>
+              <button className="btn small" disabled={!picked.length} onClick={() => setCopyOf(picked)}><Icon n="copy" /> {t('Copy')}</button>
+              <button className="btn small danger" disabled={!picked.length} onClick={delPicked}><Icon n="trash" /> {t('Delete')}</button>
+              {picked.length > 0 && <span className="hint">{t('{n} selected', { n: picked.length })}</span>}
+            </div>
             <table className="data">
-              <thead><tr><th>{t('Class')}</th><th>{t('Subject')}</th><th>{t('Teacher')}</th>{p.useRooms && <th>{t('Room')}</th>}<th className="num">{t('Hours')}</th><th>{t('Blocks')}</th><th>{t('Parallel link')}</th><th style={{ width: 120 }}></th></tr></thead>
+              <thead><tr><th style={{ width: 28 }}></th><th>{t('Class')}</th><th>{t('Subject')}</th><th>{t('Teacher')}</th>{p.useRooms && <th>{t('Room')}</th>}<th className="num">{t('Hours')}</th><th>{t('Blocks')}</th><th>{t('Parallel link')}</th><th style={{ width: 120 }}></th></tr></thead>
               <tbody>
                 {shown.map(l => {
                   const s = n.subject.get(l.subjectId)
                   return (
                     <tr key={l.id} onDoubleClick={() => setEditing(structuredClone(l))}>
+                      <td><input type="checkbox" aria-label={t('Select')} checked={sel.has(l.id)} onChange={e => toggle(l.id, e.target.checked)} /></td>
                       <td>{l.classes.map(c => classLabel(n, c, false)).join(', ')}</td>
                       <td><span className="chip"><span className="dot" style={{ background: s?.color }} />{s?.name ?? '?'}</span></td>
                       <td>{l.teacherIds.map(x => n.teacher.get(x)?.name ?? '?').join(', ') || <span className="badge warn">{t('none')}</span>}</td>
@@ -117,7 +132,7 @@ export function LessonsPage() {
                 })}
               </tbody>
             </table>
-          )}
+          </>)}
         </div>
       </div>
 
@@ -133,7 +148,7 @@ export function LessonsPage() {
           <LessonForm p={p} value={editing} onChange={setEditing} />
         </Modal>
       )}
-      {copyOpen && filter.kind === 'class' && <CopyLessons p={p} fromId={filter.id} onClose={() => setCopyOpen(false)} />}
+      {copyOf && <CopyLessons p={p} lessons={copyOf} onClose={() => { setCopyOf(null); setSel(new Set()) }} />}
     </div>
   )
 }
@@ -256,15 +271,17 @@ function LessonForm({ p, value, onChange }: { p: Project; value: Lesson; onChang
   )
 }
 
-function CopyLessons({ p, fromId, onClose }: { p: Project; fromId: string; onClose: () => void }) {
+function CopyLessons({ p, lessons, onClose }: { p: Project; lessons: Lesson[]; onClose: () => void }) {
   const [targets, setTargets] = useState<string[]>([])
   const [keepTeachers, setKeepTeachers] = useState(true)
-  const src = p.lessons.filter(l => l.classes.length === 1 && l.classes[0].classId === fromId)
+  // Lessons shared by several classes have no single class to swap, so only single-class lessons are copied.
+  const src = lessons.filter(l => l.classes.length === 1)
+  const from = new Set(src.map(l => l.classes[0].classId))
   return (
     <Modal title={t('Copy lessons to other classes')} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
-        <button className="btn primary" disabled={!targets.length} onClick={() => {
+        <button className="btn primary" disabled={!targets.length || !src.length} onClick={() => {
           update(d => {
             for (const cid of targets) {
               const cls = d.classes.find(c => c.id === cid)!
@@ -278,9 +295,9 @@ function CopyLessons({ p, fromId, onClose }: { p: Project; fromId: string; onClo
           onClose()
         }}>{t('Copy {n} lessons', { n: src.length * targets.length })}</button>
       </>}>
-      <p className="hint" style={{ marginTop: 0 }}>{t('Copies the {n} single-class lessons of this class.', { n: src.length })}</p>
+      <p className="hint" style={{ marginTop: 0 }}>{t('Copies {n} single-class lessons.', { n: src.length })}{src.length < lessons.length && ' ' + t('{n} lessons shared by several classes are skipped.', { n: lessons.length - src.length })}</p>
       <div className="row" style={{ maxHeight: 260, overflow: 'auto' }}>
-        {p.classes.filter(c => c.id !== fromId).map(c => (
+        {p.classes.filter(c => !from.has(c.id)).map(c => (
           <label key={c.id} className="check chip"><input type="checkbox" checked={targets.includes(c.id)} onChange={e => setTargets(e.target.checked ? [...targets, c.id] : targets.filter(x => x !== c.id))} />{c.name}</label>
         ))}
       </div>

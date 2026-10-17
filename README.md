@@ -73,6 +73,7 @@ The screens follow the left-hand menu (UI names in Turkish):
    that teacher's name. Lessons for several classes or teachers together are added with the form below it.
    Weekly hours are split into blocks (`2+2+1` = two double lessons and a single, each on a different day).
    Lessons with the same *eş zamanlı bağ* always run at the same time (e.g. two elective groups).
+   Tick lessons in the list (or *Hepsini seç*) to **Kopyala** them to other classes or **Sil** them together.
 4. **Dağıt** – runs up to 8 searches in parallel and keeps the best. Checks before distributing stop
    impossible setups: more hours than open periods, blocks with no possible period, and classes with
    **fewer** hours than open periods (those would be left with empty periods). **Mevcudu iyileştir**
