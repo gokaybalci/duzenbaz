@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "bench": "tsx scripts/bench.ts 3000",
+    "bench": "tsx scripts/bench.ts",
     "bench:big": "tsx scripts/big.ts 10000",
     "bench:dagitmatik": "tsx scripts/dprg-bench.ts ../dagit/Örnekler",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",

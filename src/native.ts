@@ -21,4 +21,3 @@ export const native = inTauri ? {
   setZoom: (scale: number) => getCurrentWebview().setZoom(scale),
 } : undefined
 
-export const isDesktop = !!native

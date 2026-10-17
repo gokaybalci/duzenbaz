@@ -5,7 +5,7 @@ import type { Project } from '../model'
 import { useProject } from '../store'
 import { buildIndex, classLabel, entitiesOf, names, type Kind } from '../timetable'
 import { native } from '../native'
-import { download, toast } from '../ui'
+import { download } from '../ui'
 import { DailySheet, defaultSheetOptions, EntitySheet, MasterSheet, SHEET_CSS, type SheetOptions } from './Sheets'
 
 type What = 'class' | 'teacher' | 'room' | 'master-class' | 'master-teacher' | 'daily-class' | 'daily-teacher'
@@ -35,7 +35,6 @@ function standaloneHtml(inner: string, title: string) {
 body{margin:0;background:#f3f4f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 .sheets{display:flex;flex-direction:column;gap:20px;align-items:center;padding:20px}
 .sheet{background:#fff;width:297mm;max-width:100%;padding:12mm;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.15);overflow-x:auto}
-.sheet.portrait{width:210mm}
 ${SHEET_CSS}
 :root{--font:${getComputedStyle(document.documentElement).getPropertyValue('--font') || 'sans-serif'}}
 @media print{@page{margin:8mm}body{background:#fff}.sheets{display:block;padding:0}.sheet{box-shadow:none;padding:0;width:auto;break-after:page}.sheet:last-child{break-after:auto}}
@@ -76,16 +75,6 @@ export function PrintPage() {
   const title = `${p.school.name || t('Timetable')} – ${t(WHAT.find(w => w[0] === what)![1])}`
 
   const html = () => standaloneHtml(ref.current?.innerHTML ?? '', title)
-  const share = async () => {
-    const file = new File([html()], `${fileBase(p)}_${FILE_SUFFIX[what]}.html`, { type: 'text/html' })
-    const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean }
-    if (nav.share && nav.canShare?.({ files: [file] })) {
-      try { await nav.share({ files: [file], title }) } catch { /* cancelled */ }
-    } else {
-      download(file.name, file, 'text/html')
-      toast(t('Sharing is not supported here, the file was downloaded instead.'))
-    }
-  }
 
   const opt = (k: keyof SheetOptions, label: string) => (
     <label className="check"><input type="checkbox" checked={o[k]} onChange={e => setO({ ...o, [k]: e.target.checked })} />{t(label)}</label>
@@ -98,7 +87,6 @@ export function PrintPage() {
         <button className="btn primary" disabled={!placed} onClick={() => window.print()}><Icon n="printer" /> {t('Print / Save as PDF')}</button>
         <button className="btn" disabled={!placed} onClick={() => download(`${fileBase(p)}_${FILE_SUFFIX[what]}.html`, html(), 'text/html')}><Icon n="download" /> {native ? t('Save HTML') : t('Download HTML')}</button>
         <button className="btn" disabled={!placed} onClick={() => download(`${fileBase(p)}_${FILE_SUFFIX[kind]}.csv`, csv(p, kind), 'text/csv')}><Icon n="download" /> {t('Excel (CSV)')}</button>
-        {!native && <button className="btn" disabled={!placed} onClick={share}><Icon n="share" /> {t('Share')}</button>}
       </div>
 
       <div className="card pad stack no-print">

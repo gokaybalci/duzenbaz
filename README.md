@@ -1,8 +1,9 @@
 # Düzenbaz — school timetable builder
 
 A fast desktop timetable (ders programı) generator for Windows and Linux, built as a modern alternative to Dagitmatik.
-Classes, teachers, rooms and lessons go in; a conflict-free weekly timetable comes out, with printable
-class / teacher / room sheets, an all-classes overview ("çarşaf liste") and daily plans.
+Classes, teachers and lessons go in; a conflict-free weekly timetable with **no blank periods in any class day**
+(MEB rule) comes out, with printable class and teacher sheets, an all-classes overview ("çarşaf liste") and
+daily plans.
 
 ## Desktop app (recommended for real school data)
 
@@ -51,41 +52,56 @@ npm run dev        # browser at http://localhost:5173 (uses browser storage, for
 
 ## Workflow
 
-1. **School & schedule** – days, periods with times (auto-generate from start time / lesson / break length),
-   school-wide closed slots, distribution preferences.
-2. **Subjects, Teachers, Rooms, Classes** – quick add (Enter), paste lists from Excel, colours.
-   Each has an availability grid (click/drag; click a day header to close a whole day).
-   A teacher who only comes Monday and Tuesday → close the other days; lessons are *never* placed there.
-   Teachers can also have max hours/day, max days/week and max gaps/day.
-   Rooms have a quantity (e.g. Gym × 2). Classes can be split into groups (electives, language groups).
-3. **Lessons** – class(es)/group, subject, teacher(s), room(s), weekly hours and how they split into blocks
-   (`2+2+1` = two doubles and a single, each on a different day). Several classes in one lesson = taught together.
-   Lessons with the same **parallel link** always run at the same time (e.g. two elective groups).
-   Copy a class's lessons to other classes in one step.
-4. **Generate** – runs several searches in parallel (Web Workers) and keeps the best. Pre-checks warn about
-   impossible setups (more hours than open slots, blocks with no possible slot) before you start.
-   **Improve current** continues from the existing timetable.
-5. **Timetable** – drag blocks (mouse or touch) with live green / yellow / red feedback, drop on a block of the
-   same length to swap, lock blocks (L), remove (Delete), undo/redo (Ctrl+Z / Ctrl+Y). Locked blocks stay put
-   when you regenerate.
-6. **Print & share** – per-class / per-teacher / per-room sheets (one per page, double lessons merged, lesson list,
-   optional principal signature), all-classes and all-teachers overviews, daily plans.
-   Print / save as PDF, download a standalone HTML file, export CSV for Excel, or share via the system share sheet.
+The screens follow the left-hand menu (UI names in Turkish):
+
+1. **Okul ve zaman çizelgesi** – school name, days, lesson periods with times (or generate them from start
+   time, lesson, break and lunch lengths), school-wide closed periods, and **Kurallar**:
+   - *Sınıf programlarında boş saat olmasın (MEB kuralı)* – on by default, see below.
+   - *Derslik kullan* – off by default, because most schools have fixed classrooms. Turn it on only to share
+     special rooms such as labs or the gym; until then every room screen, field and printout is hidden.
+2. **Dersler, Öğretmenler, Sınıflar** (and **Derslikler** when rooms are on) – quick add with Enter, paste
+   lists from Excel, colours, and lists you can sort by name, short name or total hours (click a column header).
+   Each has an availability grid (*koşul*): click or drag to close periods, click a day to close the whole day.
+   A teacher who only comes on Monday and Tuesday gets the other days closed, and lessons are never placed
+   there. Teachers can also have max hours per day, max days per week and max gaps per day. Classes can be
+   split into groups (electives, language groups). Rooms have a quantity (e.g. Spor Salonu × 2).
+3. **Tanımlı dersler** – choose a teacher, pick a subject and tick the classes (or groups) they teach it to,
+   as in Dagitmatik; ticking adds the lesson, unticking removes it, and classes taught by someone else show
+   that teacher's name. Lessons for several classes or teachers together are added with the form below it.
+   Weekly hours are split into blocks (`2+2+1` = two double lessons and a single, each on a different day).
+   Lessons with the same *eş zamanlı bağ* always run at the same time (e.g. two elective groups).
+4. **Dağıt** – runs up to 8 searches in parallel and keeps the best. Checks before distributing stop
+   impossible setups: more hours than open periods, blocks with no possible period, and classes with
+   **fewer** hours than open periods (those would be left with empty periods). **Mevcudu iyileştir**
+   continues from the current timetable.
+5. **Ders programı** – drag blocks (mouse or touch) with live green / yellow / red feedback, drop on a block of
+   the same length to swap, lock blocks (L), remove (Delete), undo/redo (Ctrl+Z / Ctrl+Y). Locked blocks stay
+   put when you distribute again. Any blank class period is marked red.
+6. **Yazdır ve paylaş** – one sheet per class / teacher (double lessons merged, lesson list, optional principal
+   signature), all-classes and all-teachers overviews, daily plans. Print or save as PDF, save a standalone
+   HTML file, or export CSV for Excel.
+
+**Görünüm** (bottom-left) sets the colour theme (Açık, Krem, Yeşil, Lacivert, Yüksek kontrast, Koyu), the font
+(Standart, Okunaklı, Ofis, Sade, Klasik — fonts already on Windows and Linux) and the text size
+(Normal, Büyük, Çok büyük). **Örnek okulu dene** builds a demo ortaokul with the number of classes and
+teachers you choose, every class with a full 35-hour week.
 
 ## How the distribution works
 
-`src/solver/engine.ts`. Each lesson block is a card with a precomputed *domain* — the start slots where the
-school, subject, every teacher, room and class are available — so availability rules can never be violated.
-Linked lessons are merged into one card. The search:
+`src/solver/engine.ts`. Each lesson block is a card with a precomputed *domain*: the start periods where the
+school, subject, every teacher, room and class are available. So availability can never be broken. Linked
+lessons are merged into one card. The search:
 
 * places the hardest cards first (fewest options, longest blocks),
-* then runs simulated annealing with moves (relocate, swap with a same-length card, eject-and-re-place
-  conflicting cards, best-position), with costs updated incrementally per resource-day,
-* weights conflicts adaptively so it can cross barriers in tight schools, and restarts from the best
-  solution with reheats,
-* ranks solutions by (hard problems, soft penalty): double bookings, same-lesson-same-day, teacher limits
-  first; then class gaps, teacher gaps, late starts and consecutive-day spreads.
+* then runs simulated annealing with moves (relocate, swap with a same-length card, eject and re-place
+  conflicting cards, best position), with costs updated per resource and day,
+* weights conflicts adaptively so it can get through tight schools, and restarts from the best solution,
+* ranks solutions by (hard problems, soft penalty). Hard: double bookings, two blocks of one lesson on a day,
+  teacher limits, and — with the MEB rule on — any class day that does not start at the first open period or
+  has an empty period between lessons (closed periods such as a school-wide lunch break don't count).
+  Soft: teacher gaps and blocks of a lesson on consecutive days.
 
-Benchmarks (`npm run bench`, `npm run bench:big`, `npm run bench:dagitmatik`): the 12-class demo solves with
-0 conflicts and 0 class gaps in under a second; a 28-class / 50-teacher / 546-block school in ~7 s on one
-thread; all Dagitmatik sample projects (including the "Zor" ones) solve conflict-free.
+Benchmarks, all single-threaded (`npm run bench -- <ms> <classes> [teachers]`, `npm run bench:dagitmatik`):
+full 35-hour weeks with 0 problems and 0 empty class periods for 4, 12 and 20 classes, and for 28 classes
+in about 5–7 s, also with the smallest teacher count the demo allows. All Dagitmatik sample projects,
+including the "Zor" ones, solve without conflicts.

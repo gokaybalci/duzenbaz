@@ -27,7 +27,6 @@ const P: Record<string, string> = {
   stop: 'M6 6h12v12H6z',
   sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z',
   download: 'M12 3v12M7 10l5 5 5-5M4 21h16',
-  share: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   undo: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
   check: 'M4 12l5 5L20 6',
@@ -37,7 +36,6 @@ const P: Record<string, string> = {
   down: 'M6 9l6 6 6-6',
   swap: 'M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4',
   minus: 'M5 12h14',
-  plus: 'M12 5v14M5 12h14',
   palette: 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-1.2-1-1.5-1-2.5s.8-1.5 2-1.5H17a4 4 0 0 0 4-4c0-4.7-4-8.5-9-8.5zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01'
 }
 

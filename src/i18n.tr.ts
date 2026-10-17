@@ -26,9 +26,7 @@ export const tr: Record<string, string> = {
   'Save HTML': 'HTML kaydet',
   'Could not save the file': 'Dosya kaydedilemedi',
   'Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.': 'Okulunuzun haftalık ders programını birkaç adımda hazırlayın. Verileriniz bu bilgisayardan çıkmaz: kullanıcı profilinizde tutulur ve yalnızca Dosya → Kaydet ile seçtiğiniz dosyalara yazılır.',
-  'Save to file': 'Dosyaya kaydet',
   'Load demo school': 'Örnek okulu yükle',
-  'Load the demo school? This replaces the current project (you can undo).': 'Örnek okul yüklensin mi? Mevcut projenin yerini alır (geri alabilirsiniz).',
   'Start a new empty project? Unsaved changes will be lost (you can still undo).': 'Yeni boş proje başlatılsın mı? Kaydedilmemiş değişiklikler kaybolur (yine de geri alabilirsiniz).',
   'Opened {name}': '{name} açıldı',
   'Saved {name}': '{name} kaydedildi',
@@ -281,7 +279,6 @@ export const tr: Record<string, string> = {
   'Print / Save as PDF': 'Yazdır / PDF kaydet',
   'Download HTML': 'HTML indir',
   'Excel (CSV)': 'Excel (CSV)',
-  'Share': 'Paylaş',
   'Class timetables': 'Sınıf programları',
   'Teacher timetables': 'Öğretmen programları',
   'Room timetables': 'Derslik programları',
@@ -305,5 +302,4 @@ export const tr: Record<string, string> = {
   'hours/week': 'saat/hafta',
   'Tip: in the print dialog choose "Save as PDF" to get a PDF file. Each timetable is printed on its own page.': 'İpucu: PDF almak için yazdırma penceresinde "PDF olarak kaydet"i seçin. Her program ayrı sayfaya basılır.',
   'Generate a timetable first.': 'Önce ders programını dağıtın.',
-  'Sharing is not supported here, the file was downloaded instead.': 'Bu ortamda paylaşım desteklenmiyor, dosya indirildi.',
 }

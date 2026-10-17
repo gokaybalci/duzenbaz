@@ -4,7 +4,6 @@ version = "1.0.0"
 description = "Düzenbaz okul ders programı hazırlama"
 authors = ["Düzenbaz"]
 edition = "2021"
-rust-version = "1.77.2"
 
 [lib]
 name = "duzenbaz_lib"

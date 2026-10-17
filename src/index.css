@@ -211,7 +211,6 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 /* print sheets (screen preview) */
 .sheets { display: flex; flex-direction: column; gap: 20px; align-items: center; }
 .sheet { background: #fff; color: #111; width: 297mm; max-width: 100%; padding: 12mm; box-shadow: var(--shadow); border: 1px solid var(--line); }
-.sheet.portrait { width: 210mm; }
 
 @media print {
   @page { margin: 8mm; }
