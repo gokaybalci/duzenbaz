@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 release/
 src-tauri/target/
+
+# Personal notes, not part of the project
+notlar
