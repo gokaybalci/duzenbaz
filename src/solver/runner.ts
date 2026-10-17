@@ -1,4 +1,3 @@
-// Runs several solver workers in parallel (different seeds) and keeps the best result.
 import type { Project } from '../model'
 import type { Progress, SolveResult } from './engine'
 import type { WorkerIn } from './worker'
@@ -36,7 +35,6 @@ export function runSolver(project: Project, opts: { timeLimitMs: number; workers
       w.onerror = err => { workers.forEach(x => x.terminate()); reject(err) }
       const msg: WorkerIn = {
         type: 'solve', project,
-        // Only the first worker continues from the current timetable; others explore fresh starts.
         options: { timeLimitMs: opts.timeLimitMs, seed: (base + i * 7919) >>> 0, keepPlacements: opts.keepPlacements && i === 0 },
       }
       w.postMessage(msg)

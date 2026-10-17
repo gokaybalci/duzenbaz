@@ -1,20 +1,16 @@
-// Manual placement helpers: where can a card go, and moving/swapping cards.
-
 import { cardId, parseCardId, type Lesson, type Project } from './model'
 import { update } from './store'
 import type { TTIndex } from './timetable'
 
 export type SlotStatus = 'closed' | 'bad' | 'warn' | 'ok'
 
-/** Cards that move together with this one (parallel-linked lessons, same block index). */
-export function companions(p: Project, id: string): string[] {
+function companions(p: Project, id: string): string[] {
   const { lessonId, part } = parseCardId(id)
   const l = p.lessons.find(x => x.id === lessonId)
   if (!l?.link) return [id]
   return p.lessons.filter(x => x.link === l.link && x.split.length > part).map(x => cardId(x.id, part))
 }
 
-/** Status of every possible start slot for a card. */
 export function slotStatuses(p: Project, idx: TTIndex, id: string): SlotStatus[] {
   const P = p.periods.length, S = p.days.length * P
   const group = companions(p, id)
@@ -50,7 +46,6 @@ export function slotStatuses(p: Project, idx: TTIndex, id: string): SlotStatus[]
         }
       }
       if (st === 'ok') {
-        // Another block of the same lesson already on this day?
         for (const l of lessons) {
           if (l.sameDayOk) continue
           l.split.forEach((_, k) => {

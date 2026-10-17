@@ -1,5 +1,3 @@
-// Shared UI building blocks.
-
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './icons'
 import { t } from './i18n'
@@ -23,10 +21,6 @@ export function Modal({ title, onClose, children, footer, wide }: { title: React
   )
 }
 
-/**
- * Click/drag-paint editor for an availability grid. Days are columns, periods rows.
- * `base` greys out slots already closed at school level.
- */
 export function AvailabilityEditor({ days, periods, value, onChange, base }: { days: string[]; periods: Period[]; value: Grid; onChange: (g: Grid) => void; base?: Grid }) {
   const P = periods.length
   const paint = useRef<string | null>(null)
@@ -94,7 +88,6 @@ export function AvailabilityEditor({ days, periods, value, onChange, base }: { d
   )
 }
 
-/** Tiny preview of an availability grid (days as columns). */
 export function MiniGrid({ value, days, periods, onClick }: { value: Grid; days: number; periods: number; onClick?: () => void }) {
   const cells = []
   for (let p = 0; p < periods; p++) for (let d = 0; d < days; d++) cells.push(<i key={p * days + d} className={value[d * periods + p] === '0' ? 'off' : ''} />)
@@ -136,7 +129,6 @@ export function Menu({ label, children, up, className }: { label: ReactNode; chi
   )
 }
 
-/** Multi-select rendered as removable chips plus a dropdown to add more. */
 export function ChipSelect<T extends { id: string; name: string; color?: string }>({ items, value, onChange, placeholder }: { items: T[]; value: string[]; onChange: (v: string[]) => void; placeholder: string }) {
   const byId = new Map(items.map(i => [i.id, i]))
   return (
@@ -156,7 +148,6 @@ export function ChipSelect<T extends { id: string; name: string; color?: string 
   )
 }
 
-/** Save a file: native save dialog in the desktop app, browser download otherwise. */
 export async function download(name: string, data: BlobPart, type: string) {
   const ext = name.split('.').pop()?.toLowerCase()
   if (native && (ext === 'html' || ext === 'csv')) {

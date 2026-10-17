@@ -1,7 +1,3 @@
-// Core data model. A project is plain JSON so it can be saved, shared and
-// passed to the solver worker without conversion.
-
-/** Availability grid: one char per slot (day-major), '1' = available, '0' = closed. */
 export type Grid = string
 
 export interface Entity {
@@ -15,32 +11,26 @@ export interface Entity {
 export type Subject = Entity
 
 export interface Teacher extends Entity {
-  /** Max lesson hours per day (0 = no limit). */
   maxPerDay: number
-  /** Max days per week the teacher comes in (0 = no limit). */
   maxDays: number
-  /** Max idle periods ("gaps") per day (-1 = no limit). */
   maxGapsPerDay: number
 }
 
 export interface Room extends Entity {
-  /** Number of identical rooms of this kind (e.g. 2 gyms). Lessons need any free one. */
   capacity: number
 }
 
-export interface ClassGroup {
+interface ClassGroup {
   id: string
   name: string
 }
 
 export interface SchoolClass extends Entity {
-  /** Sub-groups (e.g. elective groups). Lessons for different groups may run at the same time. */
   groups: ClassGroup[]
 }
 
 export interface ClassRef {
   classId: string
-  /** null = whole class */
   groupId: string | null
 }
 
@@ -50,11 +40,8 @@ export interface Lesson {
   teacherIds: string[]
   roomIds: string[]
   classes: ClassRef[]
-  /** Block sizes, e.g. [2,2,1] = a double, another double and a single, on different days. */
   split: number[]
-  /** Allow two blocks of this lesson on the same day. */
   sameDayOk: boolean
-  /** Lessons sharing a non-empty link are always placed at the same time (e.g. parallel electives). */
   link: string
 }
 
@@ -69,7 +56,7 @@ export interface Period {
   time: string
 }
 
-export interface Weights {
+interface Weights {
   classGap: number
   teacherGap: number
   classLateStart: number
@@ -81,21 +68,16 @@ export interface Project {
   school: { name: string; year: string; principal: string }
   days: string[]
   periods: Period[]
-  /** School-wide availability. */
   avail: Grid
   subjects: Subject[]
   teachers: Teacher[]
   rooms: Room[]
   classes: SchoolClass[]
   lessons: Lesson[]
-  /** key = cardId(lessonId, part) */
   placements: Record<string, Placement>
   weights: Weights
-  /** MEB rule: every class day starts at the first period and has no blank periods. */
   strictClasses: boolean
-  /** Use rooms (derslik) at all. Most schools have fixed classrooms, so this is off by default. */
   useRooms: boolean
-  /** Okul türü; '' = henüz seçilmedi. */
   schoolType: SchoolType
 }
 
@@ -115,7 +97,6 @@ export const newId = (prefix = '') =>
 
 export const fullGrid = (days: number, periods: number) => '1'.repeat(days * periods)
 
-/** Re-map a grid when the number of days/periods changes, keeping existing cells. */
 export function resizeGrid(g: Grid, oldD: number, oldP: number, d: number, p: number): Grid {
   let out = ''
   for (let i = 0; i < d; i++)
@@ -123,14 +104,14 @@ export function resizeGrid(g: Grid, oldD: number, oldP: number, d: number, p: nu
   return out
 }
 
-export const PALETTE = [
+const PALETTE = [
   '#e4572e', '#29335c', '#f3a712', '#669bbc', '#a8c686', '#8e5572', '#2a9d8f', '#e76f51',
   '#457b9d', '#bc6c25', '#6a4c93', '#1982c4', '#8ac926', '#ff595e', '#6d597a', '#b56576',
   '#355070', '#43aa8b', '#f8961e', '#577590', '#90be6d', '#f94144', '#4d908e', '#c08497',
 ]
 export const pickColor = (i: number) => PALETTE[i % PALETTE.length]
 
-export const DEFAULT_WEIGHTS: Weights = { classGap: 300, teacherGap: 10, classLateStart: 40, spread: 3 }
+const DEFAULT_WEIGHTS: Weights = { classGap: 300, teacherGap: 10, classLateStart: 40, spread: 3 }
 
 export function emptyProject(): Project {
   const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma']
@@ -156,9 +137,7 @@ export function emptyProject(): Project {
 
 const LANG = ['İngilizce', 'Almanca', 'Fransızca', 'Arapça', '1. Yabancı Dil']
 
-// Zorunlu dersler: [ad, kısa ad, aynı sayılan diğer adlar]
 export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string, string[]][]> = {
-  // İlkokul (1-4)
   ilkokul: [
     ['Türkçe', 'TÜR', []],
     ['Matematik', 'MAT', []],
@@ -174,7 +153,6 @@ export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string
     ['Trafik Güvenliği', 'TRF', []],
     ['İnsan Hakları, Yurttaşlık ve Demokrasi', 'İHY', ['İnsan Hakları Yurttaşlık ve Demokrasi']],
   ],
-  // Ortaokul (5-8)
   ortaokul: [
     ['Türkçe', 'TÜR', []],
     ['Matematik', 'MAT', []],
@@ -189,7 +167,6 @@ export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string
     ['Bilişim Teknolojileri ve Yazılım', 'BİL', ['Bilişim Teknolojileri']],
     ['Teknoloji ve Tasarım', 'TTS', []],
   ],
-  // Lise (9-12) ortak dersler; sanat grubundan okul birini seçer, ikisi de eklenir
   lise: [
     ['Türk Dili ve Edebiyatı', 'TDE', ['Edebiyat', 'Türk Edebiyatı']],
     ['Matematik', 'MAT', []],
@@ -211,7 +188,6 @@ export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string
 
 const subjectKey = (name: string) => name.toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]/gu, '')
 
-/** Add the school type's mandatory subjects the project does not have yet (matched by name, ignoring case and punctuation). Returns how many were added. */
 export function addMandatorySubjects(p: Project, type: SchoolType): number {
   const list = type ? MANDATORY_SUBJECTS[type] : []
   const have = new Set(p.subjects.map(s => subjectKey(s.name)))
@@ -221,7 +197,6 @@ export function addMandatorySubjects(p: Project, type: SchoolType): number {
   return missing.length
 }
 
-/** Subject and teacher names are always written in capitals (Turkish rules: i → İ). */
 export const upperName = (s: string) => s.toLocaleUpperCase('tr')
 
 export const lessonHours = (l: Lesson) => l.split.reduce((a, b) => a + b, 0)
@@ -234,7 +209,6 @@ export function parseSplit(s: string): number[] | null {
 
 export const splitLabel = (split: number[]) => split.join('+')
 
-/** Suggested split for a weekly hour count (doubles first, like common practice). */
 export function defaultSplit(hours: number): number[] {
   if (hours <= 2) return [hours]
   const out: number[] = []
@@ -244,14 +218,12 @@ export function defaultSplit(hours: number): number[] {
   return out
 }
 
-/** Translucent version of a #rrggbb colour (for tinted cell backgrounds without CSS color-mix). */
-export function tint(hex: string, alpha: number) {
+function tint(hex: string, alpha: number) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
   if (!m) return 'transparent'
   const n = parseInt(m[1], 16)
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
-/** Inline CSS variables for a coloured card/cell: --c = solid, --cbg = tint. */
 export const colorVars = (hex: string | undefined, alpha = 0.16) =>
   (hex ? { '--c': hex, '--cbg': tint(hex, alpha) } : {}) as Record<string, string>

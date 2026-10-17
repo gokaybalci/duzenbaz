@@ -9,7 +9,6 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0) }
 const fmt = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
 
-/** Set the school type and add its mandatory subjects that are missing. */
 function setSchoolType(type: SchoolType) {
   let added = 0
   update(d => { d.schoolType = type; added = addMandatorySubjects(d, type) })

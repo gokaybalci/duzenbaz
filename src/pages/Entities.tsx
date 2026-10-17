@@ -58,7 +58,6 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
     const s = q.trim().toLocaleLowerCase('tr')
     const out = s ? list.filter(e => (e.name + ' ' + e.short).toLocaleLowerCase('tr').includes(s)) : [...list]
     if (sort) {
-      // Turkish alphabet order; numeric so "9-A" comes before "10-A".
       const key = sort.key
       const cmp = key === 'hours' ? (a: Entity, b: Entity) => (hours.get(a.id) ?? 0) - (hours.get(b.id) ?? 0)
         : (a: Entity, b: Entity) => a[key].localeCompare(b[key], 'tr', { numeric: true })
@@ -67,7 +66,6 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
     return out
   }, [list, q, sort, hours])
 
-  // Click a column header: ascending, then descending (hours start with the highest).
   const sortBy = (key: 'name' | 'short' | 'hours') => {
     const first = key === 'hours' ? -1 : 1
     setSort(sort?.key === key ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: first })
@@ -153,7 +151,6 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                     <td><input value={e.name} onChange={ev => {
                       const el = ev.target, pos = el.selectionStart
                       edit(e.id, x => { x.name = UPPER[entity] ? upperName(el.value) : el.value }, 'name')
-                      // Upper-casing replaces the value, which would move the caret to the end.
                       if (UPPER[entity]) requestAnimationFrame(() => el.setSelectionRange(pos, pos))
                     }} /></td>
                     <td><input value={e.short} onChange={ev => edit(e.id, x => { x.short = ev.target.value }, 'short')} /></td>

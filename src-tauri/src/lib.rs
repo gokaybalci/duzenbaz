@@ -1,9 +1,3 @@
-//! Düzenbaz desktop shell.
-//!
-//! All school data stays on this computer: the UI is bundled into the binary, the
-//! content security policy forbids any network access, and the page can only touch
-//! the disk through the commands below, each of which goes through a native file
-//! dialog the user confirms (except re-saving to the file the user already chose).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,7 +7,6 @@ use serde::Serialize;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
-/// The project file the user opened or saved last, so Ctrl+S can save in place.
 #[derive(Default)]
 struct CurrentFile(Mutex<Option<PathBuf>>);
 
@@ -41,7 +34,6 @@ fn read_project(path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> 
     Ok(OpenedFile { name: file_name(&path), data })
 }
 
-/// Write via a temporary file so a crash or power cut can't leave a half-written file.
 fn write_atomic(path: &Path, data: &[u8]) -> Result<(), String> {
     let mut tmp = path.as_os_str().to_owned();
     tmp.push(".tmp");
@@ -53,7 +45,6 @@ fn write_atomic(path: &Path, data: &[u8]) -> Result<(), String> {
     })
 }
 
-/// Where dialogs start: the Documents folder, or the home folder if there is none.
 fn documents_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
     let p = app.path();
@@ -114,7 +105,6 @@ fn forget_project_path(cur: State<'_, CurrentFile>) {
     *cur.0.lock().unwrap() = None;
 }
 
-/// Save an export (HTML / CSV) wherever the user picks.
 #[tauri::command]
 async fn save_export(app: tauri::AppHandle, name: String, data: Vec<u8>, ext: String) -> Result<Option<String>, String> {
     let ext = match ext.as_str() {
@@ -135,13 +125,11 @@ async fn save_export(app: tauri::AppHandle, name: String, data: Vec<u8>, ext: St
     }
 }
 
-/// Real number of CPU cores (web engines may under-report it for privacy).
 #[tauri::command]
 fn cpu_count() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2)
 }
 
-/// A project file passed on the command line (double-clicking a .duzenbaz file).
 #[tauri::command]
 fn startup_file(cur: State<'_, CurrentFile>) -> Option<OpenedFile> {
     let path = std::env::args_os().skip(1).map(PathBuf::from).find(|p| has_ext(p, &PROJECT_EXTS) && p.is_file())?;

@@ -55,7 +55,6 @@ export function TimetablePage() {
     else moveCard(p, cid, Math.floor(s / P), s % P)
   }
 
-  /** Pointer-based drag (works for mouse, pen and touch). A click without movement selects. */
   const startDrag = (e: React.PointerEvent, cid: string, title: string, color: string) => {
     if (e.button !== 0) return
     e.preventDefault()
@@ -171,9 +170,7 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
   const ent = entitiesOf(p, kind).find(e => e.id === id)
   if (!grid || !ent) return null
   const dragLen = dragId ? lessonOf(p, dragId)?.split[parseCardId(dragId).part] ?? 1 : 1
-  // While a block is selected (click-to-move), show where it may go.
   const hint = !dragId && selected ? slotStatuses(p, idx, selected) : null
-  // MEB rule: mark open periods that are empty before the first lesson or between lessons of a class day.
   const blank = new Set<number>()
   if (kind === 'class' && p.strictClasses)
     for (let d = 0; d < p.days.length; d++) {

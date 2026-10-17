@@ -1,4 +1,3 @@
-// Runs one solver instance off the main thread.
 import { Solver, evaluate, type SolveOptions } from './engine'
 import type { Project } from '../model'
 
@@ -16,7 +15,6 @@ self.onmessage = async (e: MessageEvent<WorkerIn>) => {
   stopRequested = false
   const s = new Solver(msg.project)
   s.start(msg.project, msg.options)
-  // Step in short slices so 'stop' messages can be received in between.
   while (!s.step(100) && !stopRequested) {
     self.postMessage({ type: 'progress', progress: s.progress() })
     await new Promise(r => setTimeout(r, 0))

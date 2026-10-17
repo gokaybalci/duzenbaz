@@ -1,6 +1,3 @@
-// Built-in line icons (24×24, stroke). Used instead of emoji so the app looks the same on
-// every system and never depends on colour-emoji fonts (which crash some WebKitGTK builds).
-
 const P: Record<string, string> = {
   home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5',
   school: 'M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5M12 9.5v.01',

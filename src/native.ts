@@ -1,9 +1,7 @@
-// Bridge to the desktop shell (src-tauri). `native` is undefined when running in a plain browser.
-
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
-export interface NativeFile { name: string; data: Uint8Array }
+interface NativeFile { name: string; data: Uint8Array }
 
 const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -12,7 +10,6 @@ const toFile = (f: { name: string; data: number[] } | null): NativeFile | null =
 
 export const native = inTauri ? {
   openProject: async () => toFile(await invoke('open_project')),
-  /** Save to the current file (or ask where when there is none / saveAs). Returns the file name or null if cancelled. */
   saveProject: (json: string, saveAs: boolean, suggested: string) => invoke<string | null>('save_project', { json, saveAs, suggested }),
   forgetProjectPath: () => invoke<void>('forget_project_path'),
   saveExport: (name: string, data: Uint8Array, ext: 'html' | 'csv') => invoke<string | null>('save_export', { name, data: Array.from(data), ext }),

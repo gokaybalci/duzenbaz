@@ -1,9 +1,5 @@
-// Örnek okul: uygulamayı denemek ve dağıtım testleri için gerçekçi bir ortaokul.
-// Her sınıfın haftası tam 35 saattir (MEB ortaokul), bu yüzden hiç boş saat kalmaz.
-
 import { defaultSplit, emptyProject, fullGrid, newId, pickColor, type ClassRef, type Lesson, type Project, type Teacher } from './model'
 
-// [ad, kısa ad, haftalık saat, derslik]
 const CORE: [string, string, number, string?][] = [
   ['Matematik', 'MAT', 5],
   ['Türkçe', 'TÜR', 6],
@@ -18,18 +14,15 @@ const CORE: [string, string, number, string?][] = [
   ['Teknoloji ve Tasarım', 'TTS', 2],
   ['Rehberlik ve Yönlendirme', 'REH', 1],
 ]
-// Seçmeli (2 saat): 5-7. sınıflar Okuma Becerileri; 8. sınıflar iki gruba ayrılır, Satranç ve Okuma aynı saatte.
 const SAT = CORE.length, OKU = CORE.length + 1
 const ELECTIVE_HOURS = 2
-/** Most hours one teacher can carry here (35 periods a week, leave room to move). */
 const MAX_LOAD = 26
 const IDEAL_LOAD = 22
 
-export interface DemoOptions { classes: number; teachers?: number; withRooms?: boolean }
+interface DemoOptions { classes: number; teachers?: number; withRooms?: boolean }
 
 const gradesOf = (classes: number) => [5, 6, 7, 8].map((grade, i) => ({ grade, count: Math.floor(classes / 4) + (i < classes % 4 ? 1 : 0) }))
 
-/** Total hours each subject needs, and how many classes/groups take it. */
 function demand(classes: number) {
   const g8 = gradesOf(classes)[3].count
   const hours = [...CORE.map(([, , h]) => h * classes), ELECTIVE_HOURS * g8, ELECTIVE_HOURS * classes]
@@ -37,7 +30,6 @@ function demand(classes: number) {
   return { hours, takers }
 }
 
-/** Fewest, suggested and most teachers that make sense for this many classes. */
 export function demoTeacherRange(classes: number) {
   const { hours, takers } = demand(classes)
   return {
@@ -73,13 +65,11 @@ export function demoProject({ classes, teachers, withRooms = false }: DemoOption
     }
   }))
 
-  // Who takes each subject: whole classes, or the 8th-grade groups for the paired electives.
   const takersOf = (si: number): ClassRef[] =>
     si === SAT ? p.classes.filter(c => c.groups.length).map(c => ({ classId: c.id, groupId: 'g1' }))
       : si === OKU ? p.classes.map(c => ({ classId: c.id, groupId: c.groups.length ? 'g2' : null }))
         : p.classes.map(c => ({ classId: c.id, groupId: null }))
 
-  // Share teachers out by subject load: each subject gets its minimum, extras go where the load per teacher is highest.
   const { hours } = demand(classes)
   const range = demoTeacherRange(classes)
   const total = Math.min(range.max, Math.max(range.min, teachers ?? range.suggested))
@@ -125,12 +115,11 @@ export function demoProject({ classes, teachers, withRooms = false }: DemoOption
   })
   p.lessons = lessons
 
-  // A few realistic wishes, only where they still leave room to place everything.
   const load = (t: Teacher) => lessons.filter(l => l.teacherIds.includes(t.id)).reduce((a, l) => a + l.split.reduce((x, y) => x + y, 0), 0)
   const onlyDays = (days: number[]) => Array.from({ length: D * P }, (_, i) => (days.includes(Math.floor(i / P)) ? '1' : '0')).join('')
   const [math, mus, art, chess] = [firstOf[0], firstOf[7], firstOf[8], firstOf[SAT]]
-  if (mus && load(mus) <= 10) mus.avail = onlyDays([0, 1]) // Müzik öğretmeni yalnızca Pzt/Salı gelir
-  if (art && load(art) <= 10) art.avail = onlyDays([3, 4]) // Görsel Sanatlar öğretmeni yalnızca Perş/Cuma gelir
+  if (mus && load(mus) <= 10) mus.avail = onlyDays([0, 1])
+  if (art && load(art) <= 10) art.avail = onlyDays([3, 4])
   if (math && load(math) <= 24) { math.avail = math.avail.split('').map((c, i) => (i % P === 0 ? '0' : c)).join(''); math.maxGapsPerDay = 1 }
   if (chess && load(chess) <= 12) chess.maxDays = 3
   return p

@@ -1,5 +1,3 @@
-// Global project store with undo/redo and autosave to localStorage.
-
 import { useSyncExternalStore } from 'react'
 import { produce, type Draft } from 'immer'
 import { emptyProject, resizeGrid, upperName, type Project } from './model'
@@ -11,11 +9,10 @@ function load(): Project {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) return migrate(JSON.parse(raw))
-  } catch { /* ignore broken storage */ }
+  } catch {}
   return emptyProject()
 }
 
-/** Fill in fields that older saves may lack and fix grid sizes. */
 export function migrate(p: Partial<Project>): Project {
   const base = emptyProject()
   const out = { ...base, ...p, weights: { ...base.weights, ...(p.weights ?? {}) } } as Project
@@ -45,16 +42,12 @@ function emit() {
   listeners.forEach(l => l())
   clearTimeout(saveTimer)
   saveTimer = window.setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* quota */ }
+    try { localStorage.setItem(KEY, JSON.stringify(state)) } catch {}
   }, 400)
 }
 
 export const getProject = () => state
 
-/**
- * Apply an edit. Edits with the same `tag` within 1.5s are merged into one undo step
- * (so typing a name doesn't create an undo step per keystroke).
- */
 export function update(fn: (d: Draft<Project>) => void, tag = '') {
   const next = produce(state, fn)
   if (next === state) return
@@ -96,7 +89,6 @@ export const canRedo = () => future.length > 0
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 export const useProject = () => useSyncExternalStore(subscribe, getProject)
 
-/** Change days/periods and re-map every availability grid and placement. */
 export function setTimeShape(days: string[], periods: Project['periods']) {
   update(d => {
     const oD = d.days.length, oP = d.periods.length, nD = days.length, nP = periods.length
@@ -111,7 +103,6 @@ export function setTimeShape(days: string[], periods: Project['periods']) {
   })
 }
 
-/** Remove placements whose lesson no longer exists or whose block index is out of range. */
 export function prunePlacements(d: Draft<Project>) {
   const lessons = new Map(d.lessons.map(l => [l.id, l]))
   for (const k of Object.keys(d.placements)) {

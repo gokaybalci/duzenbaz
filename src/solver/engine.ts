@@ -1,38 +1,24 @@
-// Timetable solver: greedy construction followed by simulated annealing over
-// card positions with incrementally maintained costs.
-//
-// Hard rules (never relaxed): availability grids (school, subject, teacher, room, class)
-// are baked into each card's domain, locked cards never move.
-// Heavily penalised (should reach 0): double bookings, two blocks of a lesson on one day,
-// teacher max hours/day, max days/week, max gaps/day.
-// Soft (minimised): class gaps, teacher gaps, classes starting late, lesson blocks on consecutive days.
-
 import { cardId, type Placement, type Project } from '../model'
-
 
 export interface SolveOptions {
   timeLimitMs: number
   seed: number
-  /** Start from the project's current placements instead of from scratch. */
   keepPlacements: boolean
 }
 
 export interface Progress {
   iter: number
   elapsed: number
-  /** best hard violation count so far */
   hard: number
-  /** best soft penalty so far */
   soft: number
 }
 
-export type IssueKind =
+type IssueKind =
   | 'noSlot' | 'teacherClash' | 'roomClash' | 'classClash' | 'sameDay'
   | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap' | 'underload'
 
 export interface Issue {
   kind: IssueKind
-  /** entity name (teacher/room/class) or lesson description */
   who: string
   day?: number
   period?: number
@@ -40,7 +26,7 @@ export interface Issue {
   cards?: string[]
 }
 
-export interface Stats {
+interface Stats {
   classGaps: number
   teacherGaps: number
   placedCards: number
@@ -56,7 +42,6 @@ export interface SolveResult {
   stats: Stats
 }
 
-/** Deterministic PRNG (xorshift32). */
 function rng(seed: number) {
   let s = seed >>> 0 || 0x9e3779b9
   return () => {
@@ -85,12 +70,9 @@ export class Solver {
   units: Unit[] = []
   resName: string[] = []
   resType: number[] = []
-  /** how many lessons a resource can host at once (rooms with quantity > 1) */
   cap: Int32Array
   gapW: Float64Array
-  /** 1 = class row that must be gap-free and start at the first open period (MEB rule) */
   compact: Uint8Array
-  /** 1 = slot is open for this resource and for the school */
   open: Uint8Array
   maxGaps: Int32Array
   maxPerDay: Int32Array
@@ -113,11 +95,9 @@ export class Solver {
   hard = 0
   soft = 0
   unplaced = 0
-  /** weight of one hard violation in the search objective */
   hw = 1500
   logging = false
   log: number[] = []
-  /** units per resource, for neighbourhood moves */
   unitsOfRes: number[][]
 
   constructor(p: Project) {
@@ -134,7 +114,6 @@ export class Solver {
     const w = p.weights
     for (const t of p.teachers)
       addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, t.maxDays || 0, 0)
-    // Rooms only matter when the school chose to use them.
     for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
     for (const c of p.classes) {
@@ -162,7 +141,6 @@ export class Solver {
     const subj = new Map(p.subjects.map(s => [s.id, s]))
     const clsName = new Map(p.classes.map(c => [c.id, c.short || c.name]))
 
-    // Group linked lessons (simultaneous) together.
     const groups: (typeof p.lessons)[] = []
     const byLink = new Map<string, typeof p.lessons>()
     for (const l of p.lessons) {
@@ -173,7 +151,6 @@ export class Solver {
         else { const ng = [l]; byLink.set(l.link, ng); groups.push(ng) }
       } else groups.push([l])
     }
-    // Linked lessons must share the same split; otherwise schedule them independently.
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i]
       if (g.length > 1 && g.some(l => l.split.join() !== g[0].split.join())) {
@@ -203,7 +180,6 @@ export class Solver {
           avails.push(cls.avail)
         }
       }
-      // combined availability
       const ok = new Uint8Array(S)
       for (let s = 0; s < S; s++) ok[s] = avails.every(a => a[s] !== '0') ? 1 : 0
       this.lgSameDayOk[lg] = g.every(l => l.sameDayOk)
@@ -227,14 +203,12 @@ export class Solver {
       })
     })
 
-    // Capacity check: a resource cannot have more hours than open slots.
     const need = new Int32Array(R)
     for (const u of this.units) for (const r of u.res) need[r] += u.len
     for (let r = 0; r < R; r++) {
       let open = 0
       for (let s = 0; s < S; s++) if (resAvail[r][s] !== '0' && p.avail[s] !== '0') open++
       if (need[r] > open * caps[r]) this.pre.push({ kind: 'overload', who: this.resName[r], detail: `${need[r]} > ${open * caps[r]}` })
-      // MEB: a class with fewer lesson hours than open periods is left with empty periods.
       else if (this.compact[r] && need[r] > 0 && need[r] < open) this.pre.push({ kind: 'underload', who: this.resName[r], detail: `${need[r]} < ${open}` })
     }
 
@@ -252,13 +226,11 @@ export class Solver {
     this.units.forEach((u, i) => u.res.forEach(r => this.unitsOfRes[r].push(i)))
   }
 
-  // Scratch results of dayStats (kept as fields to avoid allocations in the hot loop).
   private dsHours = 0
   private dsConf = 0
   private dsGaps = 0
   private dsLead = 0
 
-  /** Lessons, double bookings, blank open periods between lessons, and open periods before the first lesson. */
   dayStats(r: number, d: number) {
     const P = this.P, base = r * this.S + d * P
     let first = -1, last = -1, hours = 0, conf = 0
@@ -278,7 +250,6 @@ export class Solver {
     this.dsHours = hours; this.dsConf = conf; this.dsGaps = gaps; this.dsLead = lead
   }
 
-  /** Hard violations and soft penalty of one resource-day, from the last dayStats call. */
   dayCost(r: number): [number, number] {
     const hours = this.dsHours, gaps = this.dsGaps, lead = this.dsLead
     let hard = this.dsConf, soft = 0
@@ -293,7 +264,6 @@ export class Solver {
     return [hard, soft]
   }
 
-  /** Recompute hard count and soft penalty of resource r on day d. */
   rowEval(r: number, d: number) {
     this.dayStats(r, d)
     const hours = this.dsHours
@@ -329,7 +299,6 @@ export class Solver {
     this.lgSoft[lg] = soft
   }
 
-  /** Add (sign=1) or remove (sign=-1) unit u at start s and update costs. */
   apply(u: number, s: number, sign: 1 | -1) {
     const unit = this.units[u]
     const S = this.S, d = (s / this.P) | 0
@@ -353,7 +322,6 @@ export class Solver {
     else this.unplaced++
   }
 
-  /** Objective used by the search; conflicts are weighted, not forbidden, so the search can cross them. */
   get obj() { return (this.hard + this.unplaced) * this.hw + this.soft }
 
   beginMove() { this.log.length = 0; this.logging = true }
@@ -362,7 +330,6 @@ export class Solver {
     for (let i = this.log.length - 2; i >= 0; i -= 2) this.moveTo(this.log[i], this.log[i + 1])
   }
 
-  /** Is unit u involved in a hard violation? */
   isBad(u: number) {
     const s = this.pos[u]
     if (s < 0) return true
@@ -383,7 +350,6 @@ export class Solver {
         else order.push(i)
       } else order.push(i)
     })
-    // Hardest first: few options, long blocks, many resources.
     const key = (i: number) => this.units[i].domain.length / (this.units[i].len * (1 + this.units[i].res.length))
     order.sort((a, b) => key(a) - key(b) || rand() - 0.5)
     for (const u of order) this.placeBest(u, rand)
@@ -403,7 +369,6 @@ export class Solver {
     this.moveTo(u, bestS)
   }
 
-  /** Units (other than u) that clash with u at its current position. */
   clashing(u: number): number[] {
     const s = this.pos[u], unit = this.units[u], out: number[] = []
     if (s < 0) return out
@@ -419,7 +384,6 @@ export class Solver {
     return out
   }
 
-  // ---- resumable search state ----
   private rand: () => number = Math.random
   private opt!: SolveOptions
   private movable: number[] = []
@@ -451,7 +415,6 @@ export class Solver {
     return { iter: this.iter, elapsed: performance.now() - this.t0, hard: this.bestHard, soft: this.bestSoft }
   }
 
-  /** Run the search for about `budgetMs`. Returns true when the search is finished. */
   step(budgetMs: number): boolean {
     if (this.done) return true
     const rand = this.rand, opt = this.opt, movable = this.movable
@@ -468,7 +431,6 @@ export class Solver {
         if (now > stepEnd) break
         const frac = (now - this.phaseStart) / phaseLen
         if (frac >= 1) {
-          // New phase: restart from the best solution with a reheat; alternate the conflict weight.
           for (let u = 0; u < this.units.length; u++) this.moveTo(u, this.bestPos[u])
           this.phase++
           this.phaseStart = now
@@ -489,7 +451,6 @@ export class Solver {
       const mv = rand()
       this.beginMove()
       if (mv < 0.25) {
-        // Swap with another unit sharing a resource and the same length.
         const unit = this.units[u]
         const peers = this.unitsOfRes[unit.res[(rand() * unit.res.length) | 0]]
         const v = peers[(rand() * peers.length) | 0]
@@ -499,7 +460,6 @@ export class Solver {
         if (!unit.domain.includes(ov) || !vu.domain.includes(old)) continue
         this.moveTo(u, -1); this.moveTo(v, old); this.moveTo(u, ov)
       } else if (mv < 0.29) {
-        // Ejection: put u somewhere, then re-place whatever it clashes with.
         const dom = this.units[u].domain
         this.moveTo(u, dom[(rand() * dom.length) | 0])
         for (const v of this.clashing(u)) if (this.units[v].domain.length <= 120) this.placeBest(v, rand)
@@ -540,7 +500,6 @@ export class Solver {
     return this.finish()
   }
 
-  /** Split the current cost into hard violation count and soft penalty. */
   parts() {
     const D = this.D
     let hard = 0, soft = 0
@@ -621,7 +580,6 @@ export class Solver {
   }
 }
 
-/** Evaluate a project's current placements without changing them. */
 export function evaluate(p: Project): SolveResult {
   const s = new Solver(p)
   s.units.forEach((u, i) => {

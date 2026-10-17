@@ -1,6 +1,4 @@
-// Turkish translations. Keys are the English UI texts.
 export const tr: Record<string, string> = {
-  // navigation & general
   'Düzenbaz': 'Düzenbaz',
   'Start': 'Başlangıç',
   'School & schedule': 'Okul ve zaman çizelgesi',
@@ -60,7 +58,6 @@ export const tr: Record<string, string> = {
   'min': 'dk',
   'moves': 'hamle',
 
-  // start page
   'Welcome': 'Hoş geldiniz',
   'Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.':
     'Okulunuzun haftalık ders programını birkaç adımda hazırlayın. Her şey bu tarayıcıda otomatik kaydedilir; yedek almak veya başka bilgisayara taşımak için Dosya → Kaydet kullanın.',
@@ -76,7 +73,6 @@ export const tr: Record<string, string> = {
   'Distribute all lessons automatically': 'Tüm dersleri otomatik dağıt',
   'Class, teacher and overview timetables': 'Sınıf, öğretmen ve çarşaf programları',
 
-  // school page
   'School': 'Okul',
   'School name': 'Okul adı',
   'School year': 'Öğretim yılı',
@@ -143,7 +139,6 @@ export const tr: Record<string, string> = {
   'Classes starting late': 'Sınıfın güne geç başlaması',
   'Same lesson on consecutive days': 'Aynı dersin art arda günlere gelmesi',
 
-  // availability editor
   'Click or drag to toggle. Click a day or period header to toggle the whole row/column.': 'Açıp kapatmak için tıklayın veya sürükleyin. Tüm günü/saati değiştirmek için başlığa tıklayın.',
   'Open all': 'Tümünü aç',
   'Close all': 'Tümünü kapat',
@@ -154,7 +149,6 @@ export const tr: Record<string, string> = {
   '{n} closed slots': '{n} kapalı saat',
   'Always available': 'Her zaman uygun',
 
-  // entities
   'Paste list': 'Liste yapıştır',
   'New {what} name…': 'Yeni {what} adı…',
   'Press Enter to add quickly.': 'Hızlı eklemek için Enter’a basın.',
@@ -190,7 +184,6 @@ export const tr: Record<string, string> = {
   'New group name…': 'Yeni grup adı…',
   'Add group': 'Grup ekle',
 
-  // lessons
   'All lessons': 'Tüm dersler',
   '{n} lessons · {h} hours/week': '{n} ders · haftada {h} saat',
   'Copy lessons to other classes…': 'Dersleri diğer sınıflara kopyala…',
@@ -230,7 +223,6 @@ export const tr: Record<string, string> = {
   'Delete {n} selected lessons?': 'Seçili {n} ders silinsin mi?',
   '{n} lessons copied': '{n} ders kopyalandı',
 
-  // generate
   'Generate timetable': 'Ders programını dağıt',
   'Blocks to place': 'Yerleşecek kart',
   'Placed': 'Yerleşen',
@@ -269,7 +261,6 @@ export const tr: Record<string, string> = {
   'Fewer lesson hours than open periods': 'Ders saati, açık saatlerden az',
   '{need} lesson hours, {open} open periods: {n} would stay empty. Add lessons, or close the extra periods for this class (Sınıflar → Koşul) or the whole school.': '{need} saat ders var, {open} saat açık: {n} saat boş kalır. Ders ekleyin ya da fazla saatleri sınıfın koşulundan (Sınıflar → Koşul) veya okul genelinden kapatın.',
 
-  // timetable
   'Overview': 'Çarşaf liste',
   'Lock all': 'Tümünü sabitle',
   'Unlock all': 'Sabitlemeleri kaldır',
@@ -283,7 +274,6 @@ export const tr: Record<string, string> = {
   'Unlock': 'Sabitlemeyi kaldır',
   'Remove from timetable': 'Programdan kaldır',
 
-  // print
   'Print / Save as PDF': 'Yazdır / PDF kaydet',
   'Download HTML': 'HTML indir',
   'Excel (CSV)': 'Excel (CSV)',

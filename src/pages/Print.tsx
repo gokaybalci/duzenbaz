@@ -41,7 +41,6 @@ ${SHEET_CSS}
 </style></head><body><div class="sheets">${inner}</div></body></html>`
 }
 
-/** Spreadsheet-friendly export: one row per class/teacher, one column per period of the week. */
 function csv(p: Project, kind: Kind) {
   const idx = buildIndex(p), n = names(p)
   const sep = getLang() === 'tr' ? ';' : ','

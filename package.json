@@ -7,12 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
     "bench": "tsx scripts/bench.ts",
-    "bench:big": "tsx scripts/big.ts 10000",
     "check:subjects": "tsx scripts/subjects-check.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "desktop:build": "packaging/build.sh",
     "desktop:dev": "tauri dev"
   },
   "devDependencies": {

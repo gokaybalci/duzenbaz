@@ -1,4 +1,3 @@
-// Self-check: Ortaokul mandatory subjects are added once and never duplicated.
 import assert from 'node:assert/strict'
 import { addMandatorySubjects, emptyProject, MANDATORY_SUBJECTS } from '../src/model'
 import { demoProject } from '../src/demo'
@@ -23,7 +22,6 @@ for (const [type, list] of Object.entries(MANDATORY_SUBJECTS)) {
   assert.equal(short.size, list.length, type + ': short names unique')
   assert.equal(names.size, list.length, type + ': names unique')
 }
-// Ortaokul → Lise adds only the lise subjects that are new.
 const l = emptyProject()
 addMandatorySubjects(l, 'ortaokul')
 assert.equal(addMandatorySubjects(l, 'lise'), 8)

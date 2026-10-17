@@ -1,6 +1,3 @@
-// Printable, human-readable timetable sheets. Styles live in SHEET_CSS so that the
-// exported standalone HTML looks exactly like the in-app preview.
-
 import type { ReactNode } from 'react'
 import { t } from '../i18n'
 import { colorVars, lessonHours, type Project } from '../model'
@@ -91,13 +88,11 @@ function cellContent(cards: CellCard[], n: Names, kind: Kind, viewer: string, o:
   })
 }
 
-/** One weekly timetable for a class, teacher or room. Multi-period blocks are merged. */
 export function EntitySheet({ p, idx, n, kind, id, o }: { p: Project; idx: TTIndex; n: Names; kind: Kind; id: string; o: SheetOptions }) {
   const P = p.periods.length
   const grid = idx.grids[kind].get(id)
   const ent = entitiesOf(p, kind).find(e => e.id === id)
   if (!grid || !ent) return null
-  // rowSpan computation per day
   const span: number[] = new Array(grid.length).fill(1)
   for (let d = 0; d < p.days.length; d++)
     for (let pp = 0; pp < P; pp++) {
@@ -157,7 +152,6 @@ export function EntitySheet({ p, idx, n, kind, id, o }: { p: Project; idx: TTInd
   )
 }
 
-/** All classes (or teachers) on one sheet: rows = entities, columns = every period of the week. */
 export function MasterSheet({ p, idx, n, kind, short = true, colored = true, screen }: { p: Project; idx: TTIndex; n: Names; kind: Kind; short?: boolean; colored?: boolean; screen?: boolean }) {
   const P = p.periods.length
   const ents = entitiesOf(p, kind)
@@ -196,7 +190,6 @@ export function MasterSheet({ p, idx, n, kind, short = true, colored = true, scr
   )
 }
 
-/** Daily plan: one day, rows = classes (or teachers), columns = periods. */
 export function DailySheet({ p, idx, n, kind, day, o }: { p: Project; idx: TTIndex; n: Names; kind: Kind; day: number; o: SheetOptions }) {
   const P = p.periods.length
   const ents = entitiesOf(p, kind)

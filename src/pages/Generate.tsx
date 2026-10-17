@@ -28,7 +28,7 @@ function underloadText(detail = '') {
   return t('{need} lesson hours, {open} open periods: {n} would stay empty. Add lessons, or close the extra periods for this class (Sınıflar → Koşul) or the whole school.', { need, open, n: open - need })
 }
 
-export function IssueList({ issues, days, periods }: { issues: Issue[]; days: string[]; periods: { label: string }[] }) {
+function IssueList({ issues, days, periods }: { issues: Issue[]; days: string[]; periods: { label: string }[] }) {
   if (!issues.length) return <div className="hint row" style={{ gap: 6 }}><Icon n="check" /> {t('No problems found.')}</div>
   return (
     <div className="issues">
@@ -59,12 +59,10 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
   const totalCards = p.lessons.reduce((a, l) => a + l.split.length, 0)
   const placedCards = Object.keys(p.placements).length
   const locked = Object.values(p.placements).filter(x => x.locked).length
-  // Pre-check: run the evaluator on the current state (cheap) to find structural problems.
   const current = useMemo(() => evaluate(p), [p])
   const structural = current.issues.filter(i => i.kind === 'noSlot' || i.kind === 'overload' || i.kind === 'linkMismatch' || i.kind === 'underload')
 
   useEffect(() => () => handle.current?.stop(), [])
-  // Desktop: use the real core count (the web engine may report fewer).
   useEffect(() => { native?.cpuCount().then(n => setWorkers(w => Math.max(w, WORKER_CHOICES.filter(x => x <= n - 1).pop() ?? 1))).catch(() => {}) }, [])
 
   const start = (keep: boolean) => {
@@ -74,7 +72,6 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
     h.done.then(r => {
       setResult(r)
       update(d => {
-        // Keep locked placements as they are, replace the rest.
         const keepLocked = Object.fromEntries(Object.entries(d.placements).filter(([, v]) => v.locked))
         d.placements = { ...r.placements, ...keepLocked }
       })

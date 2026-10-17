@@ -38,8 +38,7 @@ export default function App() {
   const [demoOpen, setDemoOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
 
-  useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch { /* ignore */ } }, [page])
-  // Desktop: a .duzenbaz file double-clicked in the file manager.
+  useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch {} }, [page])
   useEffect(() => {
     native?.startupFile().then(f => { if (f) open({ name: f.name, arrayBuffer: async () => f.data.slice().buffer }) }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps

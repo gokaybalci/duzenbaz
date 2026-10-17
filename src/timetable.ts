@@ -1,5 +1,3 @@
-// Derived views of a project's placements: per class / teacher / room grids.
-
 import { cardId, type Lesson, type Project } from './model'
 
 export type Kind = 'class' | 'teacher' | 'room'
@@ -9,14 +7,12 @@ export interface CellCard {
   lesson: Lesson
   part: number
   len: number
-  /** position inside a multi-period block (0 = first period) */
   offset: number
   locked: boolean
-  /** class group id when the lesson touches only a group of this class */
   groupId: string | null
 }
 
-export interface UnplacedCard {
+interface UnplacedCard {
   cardId: string
   lesson: Lesson
   part: number
@@ -27,7 +23,6 @@ export interface TTIndex {
   S: number
   grids: Record<Kind, Map<string, CellCard[][]>>
   unplaced: UnplacedCard[]
-  /** slot -> number of resources double-booked (any kind) */
   clashSlots: Map<string, Set<number>>
 }
 
@@ -56,7 +51,6 @@ export function buildIndex(p: Project): TTIndex {
         for (const r of l.roomIds) grids.room.get(r)?.[s].push({ ...base, groupId: null })
       }
     })
-  // A cell is a clash if two cards share a teacher/room, or a class with overlapping groups.
   const clashSlots = new Map<string, Set<number>>()
   const mark = (id: string, s: number) => { let set = clashSlots.get(id); if (!set) clashSlots.set(id, (set = new Set())); set.add(s) }
   for (const [, g] of grids.teacher) g.forEach((cards, s) => { if (cards.length > 1) cards.forEach(c => mark(c.cardId, s)) })
@@ -100,7 +94,6 @@ export function classLabel(n: Names, c: { classId: string; groupId: string | nul
   return `${base} (${g?.name ?? c.groupId})`
 }
 
-/** Text lines for a card shown in a given kind of timetable. */
 export function cardLines(n: Names, l: Lesson, kind: Kind, short: boolean, viewerId?: string): { title: string; lines: string[]; color: string } {
   const subj = n.subject.get(l.subjectId)
   const title = pick(subj, short)
@@ -127,10 +120,6 @@ export function entitiesOf(p: Project, kind: Kind) {
   return kind === 'class' ? p.classes : kind === 'teacher' ? p.teachers : p.rooms
 }
 
-/**
- * Weekly hours assigned to a class / teacher / room (from lesson definitions).
- * For classes, group lessons run in parallel, so it is whole-class hours + the busiest group.
- */
 export function loadOf(p: Project, kind: Kind, id: string) {
   let h = 0
   const groups = new Map<string, number>()

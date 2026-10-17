@@ -44,7 +44,6 @@ export function LessonsPage() {
     if (!valid(draft)) return
     update(d => { d.lessons.push({ ...draft, id: newId('l') }) })
     toast(t('Lesson added'))
-    // Keep class/teacher for fast entry of the next lesson.
     setDraft({ ...blankLesson(filter), classes: draft.classes, teacherIds: filter.kind === 'teacher' ? draft.teacherIds : [] })
   }
 
@@ -155,7 +154,6 @@ export function LessonsPage() {
 
 const sameRef = (a: ClassRef, b: ClassRef) => a.classId === b.classId && a.groupId === b.groupId
 
-/** Teacher-first assignment: pick a subject, then tick the classes this teacher teaches it to. */
 function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
   const n = names(p)
   const [subjectId, setSubjectId] = useState('')
@@ -168,7 +166,6 @@ function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
 
   const pickSubject = (id: string) => {
     setSubjectId(id)
-    // Most classes take a subject for the same hours: start from what is already used for it.
     const used = p.lessons.find(l => l.subjectId === id)
     if (used) setSplitText(splitLabel(used.split))
   }
@@ -274,7 +271,6 @@ function LessonForm({ p, value, onChange }: { p: Project; value: Lesson; onChang
 function CopyLessons({ p, lessons, onClose }: { p: Project; lessons: Lesson[]; onClose: () => void }) {
   const [targets, setTargets] = useState<string[]>([])
   const [keepTeachers, setKeepTeachers] = useState(true)
-  // Lessons shared by several classes have no single class to swap, so only single-class lessons are copied.
   const src = lessons.filter(l => l.classes.length === 1)
   const from = new Set(src.map(l => l.classes[0].classId))
   return (
