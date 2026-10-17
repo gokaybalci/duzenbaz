@@ -80,8 +80,10 @@ export function LessonsPage() {
 
         {(!p.subjects.length || !p.classes.length) && <div className="card pad hint">{t('Add subjects, classes and teachers first. Then define which lessons each class takes here.')}</div>}
 
+        {filter.kind === 'teacher' && <TeacherAssign p={p} teacherId={filter.id} />}
+
         <div className="card pad stack">
-          <h3>{t('Add lesson')}</h3>
+          <h3>{filter.kind === 'teacher' ? t('Other lesson (several classes or teachers together)') : t('Add lesson')}</h3>
           <LessonForm p={p} value={draft} onChange={setDraft} />
           <div className="row">
             <button className="btn primary" disabled={!valid(draft)} onClick={add}>+ {t('Add lesson')}</button>
@@ -132,6 +134,67 @@ export function LessonsPage() {
         </Modal>
       )}
       {copyOpen && filter.kind === 'class' && <CopyLessons p={p} fromId={filter.id} onClose={() => setCopyOpen(false)} />}
+    </div>
+  )
+}
+
+const sameRef = (a: ClassRef, b: ClassRef) => a.classId === b.classId && a.groupId === b.groupId
+
+/** Dagitmatik-style assignment: pick a subject, then tick the classes this teacher teaches it to. */
+function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
+  const n = names(p)
+  const [subjectId, setSubjectId] = useState('')
+  const [splitText, setSplitText] = useState('2')
+  const split = parseSplit(splitText)
+  const refs: ClassRef[] = p.classes.flatMap(c => [{ classId: c.id, groupId: null }, ...c.groups.map(g => ({ classId: c.id, groupId: g.id }))])
+  const ofSubject = p.lessons.filter(l => l.subjectId === subjectId)
+  const mine = (r: ClassRef) => ofSubject.find(l => l.teacherIds.includes(teacherId) && l.classes.length === 1 && sameRef(l.classes[0], r))
+  const others = (r: ClassRef) => ofSubject.filter(l => !l.teacherIds.includes(teacherId) && l.classes.some(c => sameRef(c, r)))
+
+  const pickSubject = (id: string) => {
+    setSubjectId(id)
+    // Most classes take a subject for the same hours: start from what is already used for it.
+    const used = p.lessons.find(l => l.subjectId === id)
+    if (used) setSplitText(splitLabel(used.split))
+  }
+  const toggle = (r: ClassRef) => {
+    const m = mine(r)
+    if (m) update(d => { d.lessons = d.lessons.filter(l => l.id !== m.id); prunePlacements(d) })
+    else if (split) update(d => { d.lessons.push({ id: newId('l'), subjectId, teacherIds: [teacherId], roomIds: [], classes: [r], split, sameDayOk: false, link: '' }) })
+  }
+
+  return (
+    <div className="card pad stack">
+      <h3>{t('Give lessons to this teacher')}</h3>
+      <div className="row" style={{ alignItems: 'end', gap: 16 }}>
+        <label className="field">{t('Subject')}
+          <select value={subjectId} onChange={e => pickSubject(e.target.value)}>
+            <option value="">{t('Choose…')}</option>
+            {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        <label className="field" title={t('How the weekly hours are split into blocks, e.g. 2+2+1 = two double lessons and one single, each on a different day.')}>{t('Hours / blocks for new ticks')}
+          <input value={splitText} style={{ width: 110, borderColor: split ? undefined : 'var(--danger)' }} onChange={e => setSplitText(e.target.value)} placeholder="2+2+1" />
+        </label>
+        <span className="hint" style={{ paddingBottom: 6 }}>{t('Teacher total: {h} hours/week', { h: loadOf(p, 'teacher', teacherId) })}</span>
+      </div>
+      {subjectId && (
+        <div className="assign-grid">
+          {refs.map(r => {
+            const m = mine(r), o = others(r)
+            return (
+              <label key={r.classId + '|' + r.groupId} className={`assign ${m ? 'on' : ''}`}>
+                <input type="checkbox" checked={!!m} disabled={!m && !split} onChange={() => toggle(r)} />
+                <span><b>{classLabel(n, r, false)}</b>
+                  {m && <span className="hint"> · {lessonHours(m)} {t('h')}</span>}
+                  {o.length > 0 && <span className="hint" style={{ display: 'block' }}>{o.flatMap(l => l.teacherIds).map(x => n.teacher.get(x)?.short || n.teacher.get(x)?.name).join(', ') || t('no teacher')}</span>}
+                </span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+      {!subjectId && <span className="hint">{t('Choose a subject, then tick the classes this teacher teaches it to. Unticking removes the lesson.')}</span>}
     </div>
   )
 }

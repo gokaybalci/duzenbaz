@@ -39,14 +39,10 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
   const [availFor, setAvailFor] = useState<string | null>(null)
   const [groupsFor, setGroupsFor] = useState<string | null>(null)
   const [paste, setPaste] = useState<string | null>(null)
+  const [sort, setSort] = useState<{ key: 'name' | 'short' | 'hours'; dir: 1 | -1 } | null>(null)
   const list = p[entity] as Entity[]
   const kind = KIND[entity]
   const [title, singular] = TITLES[entity]
-
-  const shown = useMemo(() => {
-    const s = q.trim().toLocaleLowerCase()
-    return s ? list.filter(e => (e.name + ' ' + e.short).toLocaleLowerCase().includes(s)) : list
-  }, [list, q])
 
   const hours = useMemo(() => {
     const m = new Map<string, number>()
@@ -54,6 +50,30 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
     else if (kind) for (const e of list) m.set(e.id, loadOf(p, kind, e.id))
     return m
   }, [p, entity, kind, list])
+
+  const shown = useMemo(() => {
+    const s = q.trim().toLocaleLowerCase('tr')
+    const out = s ? list.filter(e => (e.name + ' ' + e.short).toLocaleLowerCase('tr').includes(s)) : [...list]
+    if (sort) {
+      // Turkish alphabet order; numeric so "9-A" comes before "10-A".
+      const key = sort.key
+      const cmp = key === 'hours' ? (a: Entity, b: Entity) => (hours.get(a.id) ?? 0) - (hours.get(b.id) ?? 0)
+        : (a: Entity, b: Entity) => a[key].localeCompare(b[key], 'tr', { numeric: true })
+      out.sort((a, b) => cmp(a, b) * sort.dir)
+    }
+    return out
+  }, [list, q, sort, hours])
+
+  // Click a column header: ascending, then descending (hours start with the highest).
+  const sortBy = (key: 'name' | 'short' | 'hours') => {
+    const first = key === 'hours' ? -1 : 1
+    setSort(sort?.key === key ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: first })
+  }
+  const sortHead = (key: 'name' | 'short' | 'hours', label: string) => (
+    <button className="th-sort" onClick={() => sortBy(key)} title={t('Sort')}>
+      {label}{sort?.key === key && <Icon n="down" size={12} className={sort.dir === 1 ? 'flip' : ''} />}
+    </button>
+  )
   const openSlots = (e: Entity) => e.avail.split('').filter((c, i) => c !== '0' && p.avail[i] !== '0').length * (entity === 'rooms' ? (e as Room).capacity || 1 : 1)
 
   const add = (names: string[]) => {
@@ -111,13 +131,13 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
             <thead>
               <tr>
                 <th style={{ width: 40 }}></th>
-                <th>{t('Name')}</th>
-                <th style={{ width: 110 }}>{t('Short')}</th>
+                <th>{sortHead('name', t('Name'))}</th>
+                <th style={{ width: 110 }}>{sortHead('short', t('Short'))}</th>
                 <th style={{ width: 90 }}>{t('Availability')}</th>
                 {entity === 'teachers' && <><th className="num" title={t('Max hours per day (0 = no limit)')}>{t('Max/day')}</th><th className="num" title={t('Max days per week (0 = no limit)')}>{t('Max days')}</th><th className="num" title={t('Max idle periods per day (empty = no limit)')}>{t('Max gaps/day')}</th></>}
                 {entity === 'classes' && <th>{t('Groups')}</th>}
                 {entity === 'rooms' && <th className="num" title={t('How many identical rooms of this kind the school has (e.g. 2 gyms). A lesson needs any one of them.')}>{t('Quantity')}</th>}
-                <th className="num">{entity === 'subjects' ? t('Total hours') : t('Hours / open')}</th>
+                <th className="num">{sortHead('hours', entity === 'subjects' ? t('Total hours') : t('Hours / open'))}</th>
                 <th style={{ width: 50 }}></th>
               </tr>
             </thead>
