@@ -22,7 +22,7 @@ const CORE: [string, string, number, string?][] = [
 const SAT = CORE.length, OKU = CORE.length + 1
 const ELECTIVE_HOURS = 2
 /** Most hours one teacher can carry here (35 periods a week, leave room to move). */
-const MAX_LOAD = 30
+const MAX_LOAD = 26
 const IDEAL_LOAD = 22
 
 export interface DemoOptions { classes: number; teachers?: number; withRooms?: boolean }
