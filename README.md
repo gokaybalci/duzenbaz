@@ -1,3 +1,5 @@
+<p align="center"><img src="public/logo.svg" alt="Düzenbaz logosu" width="160"></p>
+
 # Düzenbaz — okul ders programı hazırlayıcı
 
 Windows ve Linux için hızlı bir masaüstü ders programı hazırlama uygulaması. Sınıfları, öğretmenleri ve dersleri girersiniz; **hiçbir sınıf gününde boş saat olmayan**

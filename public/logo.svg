@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="26 -6 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="topGrad" x1="0" y1="20" x2="0" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a9e0d1"/>
+      <stop offset="0.5" stop-color="#8ccfca"/>
+      <stop offset="1" stop-color="#64acc7"/>
+    </linearGradient>
+    <linearGradient id="mainGrad" x1="205" y1="15" x2="70" y2="175" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ade2d4"/>
+      <stop offset="0.35" stop-color="#8fd3cd"/>
+      <stop offset="0.65" stop-color="#6fbccc"/>
+      <stop offset="1" stop-color="#559fc3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Upper-left piece of the D: stem + top bar -->
+  <path id="top" fill="url(#topGrad)" stroke="#e3f4ef" stroke-width="3" stroke-linejoin="round" paint-order="stroke" d="
+    M47 36 Q47 20 63 20 L128 20
+    C142 20 152 25 158 31 Q162 36 159 40
+    L147 59 Q142 64 137 59 Q132 54 124 54
+    L88 54 Q84 54 84 58 L84 84 Q84 88 81 91
+    L51 124 Q47 128 47 121 Z"/>
+
+  <!-- Arrow + bottom stroke + bowl of the D -->
+  <path id="main" fill="url(#mainGrad)" stroke="#e3f4ef" stroke-width="3" stroke-linejoin="round" paint-order="stroke" d="
+    M170 20 L204 12 Q215 10 214 20
+    L208 57 Q207 66 199 62
+    L190 59 Q187 58 185 61
+    L143 114 Q131 124 120 127 Q110 129 105 124 Q100 120 96 125
+    L84 141 Q82 144 87 144 L124 144
+    C144 142 155 124 162 104 L180 76 Q187 65 192 72
+    C196 80 196 98 195 112 C191 146 168 173 135 176
+    L58 177 Q37 177 37 160 Q37 149 47 140
+    L81 98 C87 87 99 85 107 91 L113 96 Q117 99 121 95
+    L160 52 L166 30 Q166 22 170 20 Z"/>
+
+  <!-- Glossy highlights -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+    <path d="M56 110 L56 40 Q56 29 67 29 L130 29 Q142 29 150 35" stroke-width="4"/>
+    <path d="M48 154 L86 106 Q99 91 112 103 L114 105 Q118 108 122 104 L170 48" stroke-width="3.5" opacity="0.8"/>
+    <path d="M187 82 Q190 96 189 112" stroke-width="3" opacity="0.8"/>
+  </g>
+
+  <!-- Star on the arrowhead -->
+  <path transform="translate(190 31) rotate(-12) scale(1.05)" fill="#6fc2c0"
+        d="M0 -11 L3.2 -3.6 L11 -3.4 L5 1.8 L6.8 9.6 L0 5.4 L-6.8 9.6 L-5 1.8 L-11 -3.4 L-3.2 -3.6 Z"/>
+</svg>

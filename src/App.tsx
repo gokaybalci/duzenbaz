@@ -88,7 +88,7 @@ export default function App() {
     <div className="app">
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
-        <div className="brand"><span className="logo">D</span>{t('Düzenbaz')}</div>
+        <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
         {NAV.filter(([id]) => id !== 'rooms' || p.useRooms).map(([id, icon, label], i) => (
           <div key={id} style={{ display: 'contents' }}>
             {(i === 2 || i === 7) && <div className="nav-sep" />}
