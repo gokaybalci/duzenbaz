@@ -108,7 +108,7 @@ fn forget_project_path(cur: State<'_, CurrentFile>) {
 #[tauri::command]
 async fn save_export(app: tauri::AppHandle, name: String, data: Vec<u8>, ext: String) -> Result<Option<String>, String> {
     let ext = match ext.as_str() {
-        "html" | "csv" | "pdf" => ext,
+        "html" | "csv" | "pdf" | "xlsx" => ext,
         _ => return Err("unsupported file type".into()),
     };
     let mut dlg = app.dialog().file().add_filter(ext.to_uppercase(), &[ext.as_str()]).set_file_name(&name);

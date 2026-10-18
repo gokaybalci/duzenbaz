@@ -25,6 +25,7 @@ export function migrate(p: Partial<Project>): Project {
   for (const t of out.teachers) { t.maxPerDay ??= 0; t.maxDays ??= 0; t.maxGapsPerDay ??= -1 }
   for (const l of out.lessons) { l.link ??= ''; l.sameDayOk ??= false; l.roomIds ??= [] }
   out.placements ??= {}
+  out.duty = { ...base.duty, ...p.duty }
   for (const e of [...out.subjects, ...out.teachers]) e.name = upperName(e.name)
   out.strictClasses ??= true
   out.useRooms ??= out.rooms.length > 0 && out.lessons.some(l => l.roomIds.length > 0)

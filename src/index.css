@@ -206,6 +206,7 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .sheet { background: #fff; color: #111; width: 297mm; max-width: 100%; padding: 12mm; box-shadow: var(--shadow); border: 1px solid var(--line); }
 
 @media print {
+  .dt th, .dt td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 8mm; }
   body, :root { background: #fff !important; }
   .no-print, .sidebar, .topbar { display: none !important; }
@@ -244,3 +245,15 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .font-list { display: flex; flex-direction: column; padding: 2px 4px; }
 .menu-pop .font-list button { border: 2px solid transparent; border-radius: 6px; padding: 5px 8px; font-size: 14px; }
 .menu-pop .font-list button.on { border-color: var(--accent); }
+.ts table.dt { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 14px; }
+.ts .dt th { background: #1f4e78; color: #fff; padding: 4px 6px; border: 1px solid #555; }
+.ts .dt td { border: 1px solid #999; padding: 3px 6px; text-align: center; }
+.ts .dt td.dd { text-align: left; white-space: nowrap; }
+.ts .dt td.dd span { color: #555; }
+.ts .dt td.sp { color: #777; }
+.ts .dt-title { font-size: 16px; margin: 6px 0; }
+.heat-low { background: #63be7b; }
+.heat-mid { background: #ffeb84; }
+.heat-high { background: #f8696b; }
+.nav-item.module { background: var(--accent); color: #fff; font-weight: 700; margin-bottom: 8px; }
+.nav-item.module:hover { background: var(--accent); filter: brightness(1.08); }

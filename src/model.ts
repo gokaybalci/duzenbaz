@@ -88,11 +88,22 @@ export interface DutyPlace {
   count: number
 }
 
+export type DutyRole = 'duty' | 'admin' | 'dutyAdmin' | 'preschool'
+
+export interface SpecialDay {
+  id: string
+  from: string
+  to: string
+  name: string
+}
+
 export interface Duty {
   places: DutyPlace[]
-  day: Record<string, number>
-  weeks: number
+  role: Record<string, DutyRole>
+  days: Record<string, boolean[]>
+  specials: SpecialDay[]
   start: string
+  month: string
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
@@ -146,7 +157,7 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
-    duty: { places: [], day: {}, weeks: 18, start: '' },
+    duty: { places: [], role: {}, days: {}, specials: [], start: '', month: '' },
   }
 }
 

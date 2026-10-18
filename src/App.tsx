@@ -3,7 +3,7 @@ import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
 import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
-import { DutyPage } from './pages/Duty'
+import { DutyPlacesPage, DutyPlanPage, DutySpecialsPage, DutyTeachersPage } from './pages/Duty'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
 import { LessonsPage } from './pages/Lessons'
@@ -16,7 +16,8 @@ import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme
 import { canRedo, canUndo, getProject, redo, replaceProject, undo, useProject } from './store'
 import { download, Menu, Modal, toast, ToastHost } from './ui'
 
-type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print' | 'duty'
+type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print' | DutyPage
+type DutyPage = 'duty-teachers' | 'duty-places' | 'duty-specials' | 'duty-plan'
 
 const NAV: [Page, IconName, string][] = [
   ['start', 'home', 'Start'],
@@ -29,13 +30,21 @@ const NAV: [Page, IconName, string][] = [
   ['generate', 'zap', 'Generate'],
   ['timetable', 'calendar', 'Timetable'],
   ['print', 'printer', 'Print & share'],
-  ['duty', 'shield', 'Duty roster'],
 ]
+
+const DUTY_NAV: [DutyPage, IconName, string][] = [
+  ['duty-teachers', 'teacher', 'Teachers'],
+  ['duty-places', 'door', 'Duty places'],
+  ['duty-specials', 'calendar', 'Special days'],
+  ['duty-plan', 'zap', 'Distribute duties'],
+]
+const PAGES = new Set<string>([...NAV, ...DUTY_NAV].map(([id]) => id))
 
 export default function App() {
   const p = useProject()
   useLang()
-  const [page, setPage] = useState<Page>(() => (localStorage.getItem('duzenbaz.page') as Page) || 'start')
+  const [page, setPage] = useState<Page>(() => { const s = localStorage.getItem('duzenbaz.page') ?? ''; return PAGES.has(s) ? s as Page : 'start' })
+  const dutyMode = page.startsWith('duty-')
   const fileInput = useRef<HTMLInputElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
@@ -87,9 +96,12 @@ export default function App() {
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
         <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
-        {NAV.filter(([id]) => id !== 'rooms' || p.useRooms).map(([id, icon, label], i) => (
+        <button className="nav-item module" onClick={() => setPage(dutyMode ? 'start' : 'duty-teachers')}>
+          <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
+        </button>
+        {(dutyMode ? DUTY_NAV : NAV.filter(([id]) => id !== 'rooms' || p.useRooms)).map(([id, icon, label], i) => (
           <div key={id} style={{ display: 'contents' }}>
-            {(i === 2 || i === 7 || id === 'duty') && <div className="nav-sep" />}
+            {!dutyMode && (i === 2 || i === 7) && <div className="nav-sep" />}
             <button className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>
               <Icon n={icon} />{t(label)}{counts[id] !== undefined && <span className="count">{counts[id]}</span>}
             </button>
@@ -129,7 +141,10 @@ export default function App() {
           {page === 'generate' && <GeneratePage goTo={pg => setPage(pg as Page)} />}
           {page === 'timetable' && <TimetablePage />}
           {page === 'print' && <PrintPage />}
-          {page === 'duty' && <DutyPage />}
+          {page === 'duty-teachers' && <DutyTeachersPage />}
+          {page === 'duty-places' && <DutyPlacesPage />}
+          {page === 'duty-specials' && <DutySpecialsPage />}
+          {page === 'duty-plan' && <DutyPlanPage />}
         </main>
       </div>
       {newOpen && <NewProjectDialog onClose={() => setNewOpen(false)} onCreate={() => { setNewOpen(false); setPage('school') }} />}
