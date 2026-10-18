@@ -104,13 +104,15 @@ export function fillMonth(p: Project, month: string) {
   const pool = p.teachers.filter(t => roleOf(p, t.id) === 'duty').map(t => t.id)
   const dates = monthDates(month)
   const history = dutyCounts(p, shiftDate(dates[0], -1))
-  const total = new Map(pool.map(t => [t, history.get(t)!.total]))
-  const at = new Map(pool.map(t => {
+  const past = new Map(pool.map(t => [t, history.get(t)!.total]))
+  const pastAt = new Map(pool.map(t => {
     const h = history.get(t)!, places = { ...h.places }
     const byHand = h.total - Object.values(h.places).reduce((x, y) => x + y, 0)
     for (const [pl, n] of per) places[pl] = (places[pl] ?? 0) + (byHand * n) / slots.length
     return [t, places]
   }))
+  const total = new Map(pool.map(t => [t, 0]))
+  const at = new Map(pool.map(t => [t, {} as Record<string, number>]))
   const free = (date: string, key: string) => !p.duty.locked[`${date}|${key}`]
   const place = (key: string) => key.split('#')[0]
   const rows = new Map<string, Record<string, string>>()
@@ -130,6 +132,7 @@ export function fillMonth(p: Project, month: string) {
   const cost = (t: string, pl: string, date: string) => {
     const l = last.get(t)
     return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2) + (near(t, date) ? 50 : 0)
+      + 0.01 * (past.get(t)! + (pastAt.get(t)![pl] ?? 0) / per.get(pl)!)
   }
 
   for (const date of dates) {
@@ -174,7 +177,7 @@ export function fillMonth(p: Project, month: string) {
 
   for (let moved = true; moved;) {
     moved = false
-    for (const src of [...pool].sort((a, b) => total.get(b)! - total.get(a)!)) {
+    for (const src of [...pool].sort((a, b) => total.get(b)! - total.get(a)! || past.get(b)! - past.get(a)!)) {
       const prev = new Map<string, { from: string; date: string; key: string }>()
       const seen = new Set([src]), queue = [src]
       let goal = ''
@@ -189,7 +192,8 @@ export function fillMonth(p: Project, month: string) {
               seen.add(y)
               prev.set(y, { from: x, date, key })
               queue.push(y)
-              if (total.get(y)! <= total.get(src)! - 2) { goal = y; break }
+              const d = total.get(src)! - total.get(y)!
+              if (d >= 2 || (d === 1 && past.get(src)! + total.get(src)! - past.get(y)! - total.get(y)! >= 2)) { goal = y; break }
             }
             if (goal) break
           }
@@ -211,7 +215,7 @@ export function fillMonth(p: Project, month: string) {
     }
   }
 
-  const share = (t: string, pl: string) => (at.get(t)?.[pl] ?? 0) / per.get(pl)!
+  const share = (t: string, pl: string) => ((at.get(t)?.[pl] ?? 0) + 0.01 * (pastAt.get(t)?.[pl] ?? 0)) / per.get(pl)!
   const swapScore = (a: string, pa: string, b: string, pb: string) => share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
   const trade = (a: string, pa: string, b: string, pb: string, dir: 1 | -1) => {
     at.get(a)![pa] -= dir; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + dir; at.get(b)![pb] -= dir; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + dir

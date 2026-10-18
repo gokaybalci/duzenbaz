@@ -99,6 +99,7 @@ export function DutyTeachersPage() {
     const duties = Object.values(p.duty.assign).reduce((a, row) => a + Object.values(row).filter(x => x === id).length, 0)
     if (lessons && !confirm(t('"{name}" is used in {n} lessons. Delete anyway?', { name: n, n: lessons }))) return
     if (!lessons && duties && !confirm(t('"{name}" has {n} duties. Delete anyway?', { name: n, n: duties }))) return
+    if (!lessons && !duties && !confirm(t('Delete "{name}"?', { name: n }))) return
     update(d => removeTeacher(d, id))
   }
   const add = () => {
@@ -207,7 +208,7 @@ export function DutyPlacesPage() {
                   <td><input value={pl.name} onChange={e => update(d => { d.duty.places.find(x => x.id === pl.id)!.name = e.target.value }, 'dp.name')} /></td>
                   <td className="num"><input type="number" min={1} max={9} value={pl.count} style={{ width: 70 }}
                     onChange={e => update(d => { d.duty.places.find(x => x.id === pl.id)!.count = Math.max(1, Math.min(9, +e.target.value || 1)) }, 'dp.count')} /></td>
-                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => update(d => { d.duty.places = d.duty.places.filter(x => x.id !== pl.id) })}><Icon n="trash" /></button></td>
+                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => { if (confirm(t('Delete "{name}"?', { name: pl.name }))) update(d => { d.duty.places = d.duty.places.filter(x => x.id !== pl.id) }) }}><Icon n="trash" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -252,7 +253,7 @@ export function DutySpecialsPage() {
                   <td>{trDate(s.from)}</td>
                   <td>{s.to && s.to !== s.from ? trDate(s.to) : ''}</td>
                   <td><input value={s.name} onChange={e => update(d => { d.duty.specials.find(x => x.id === s.id)!.name = e.target.value }, 'sp.name')} /></td>
-                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => update(d => { d.duty.specials = d.duty.specials.filter(x => x.id !== s.id) })}><Icon n="trash" /></button></td>
+                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => { if (confirm(t('Delete "{name}"?', { name: s.name }))) update(d => { d.duty.specials = d.duty.specials.filter(x => x.id !== s.id) }) }}><Icon n="trash" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -301,6 +302,7 @@ export function DutyPlanPage() {
   const duty = v.duty
   const teachers = new Map(p.teachers.map(x => [x.id, x]))
   const locks = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
+  const filled = v.rows.reduce((n, d) => n + Object.keys(d.row).length, 0) > locks
   const runs = new Set<string>()
   let empty = 0
   for (const d of v.rows) {
@@ -333,7 +335,15 @@ export function DutyPlanPage() {
       {slots.length > 0 && duty.length > 0 && (<>
         <div className="card pad row">
           <button className="btn primary" onClick={() => { update(d => fillMonth(d, month)); toast(t('{m} distributed', { m: monthLabel(month) })) }}><Icon n="zap" /> {t('Distribute {m}', { m: monthLabel(month) })}</button>
+          <button className="btn" disabled={!filled} onClick={() => update(d => { for (const [date, row] of Object.entries(d.duty.assign)) if (date.startsWith(month)) for (const key of Object.keys(row)) d.duty.locked[`${date}|${key}`] = true })}><Icon n="lock" /> {t('Lock every duty')}</button>
           <button className="btn" disabled={!locks} onClick={() => update(d => { for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k] })}><Icon n="unlock" /> {t('Unlock all')} ({locks})</button>
+          <button className="btn danger" disabled={!hasPlan(p, month)} onClick={() => {
+            if (!confirm(t('Clear all duties of {m}, including locked ones?', { m: monthLabel(month) }))) return
+            update(d => {
+              for (const date of Object.keys(d.duty.assign)) if (date.startsWith(month)) delete d.duty.assign[date]
+              for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k]
+            })
+          }}><Icon n="trash" /> {t('Clear month')}</button>
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
         {(runs.size > 0 || empty > 0) && (

@@ -55,8 +55,12 @@ const full = p.teachers.filter(t => ![t0, t2, t3, t4, t6].includes(t)).map(t => 
 const spread = (f: (id: string) => number) => Math.max(...full.map(f)) - Math.min(...full.map(f))
 for (const pl of p.duty.places) assert.ok(spread(id => c.get(id)!.places[pl.id] ?? 0) <= 1, `${pl.name}: places differ by at most one`)
 assert.ok(spread(id => c.get(id)!.total) <= 1, 'totals differ by at most one')
-const avg = full.reduce((a, id) => a + c.get(id)!.total, 0) / full.length
-assert.ok(Math.abs(c.get(t4.id)!.total - avg) <= 2, 'hand-entered earlier months count towards the total')
+for (const m of months) {
+  const mc = dutyCounts(p, m + '-31', m + '-01'), month = (id: string) => mc.get(id)!.total
+  assert.ok(Math.max(...full.map(month)) - Math.min(...full.map(month)) <= 1, `${m}: each month on its own is balanced`)
+  for (const pl of p.duty.places) assert.ok(Math.max(...full.map(id => mc.get(id)!.places[pl.id] ?? 0)) - Math.min(...full.map(id => mc.get(id)!.places[pl.id] ?? 0)) <= 2, `${m}: ${pl.name} balanced within the month`)
+  assert.ok(month(t4.id) <= Math.min(...full.map(month)), `${m}: a teacher with many hand-entered earlier duties is at the low end`)
+}
 
 const date = '2026-11-02', key = 'b#0', other = full.find(id => !Object.values(p.duty.assign[date]).includes(id))!
 p.duty.assign[date][key] = other
