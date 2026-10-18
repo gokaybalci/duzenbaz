@@ -2,7 +2,7 @@ import { t } from './i18n'
 import { parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
 import { ref, S, type Cell, type Sheet } from './xlsx'
 
-export const DUTY_ROLES: [DutyRole, string][] = [['duty', 'On duty'], ['admin', 'Administrator'], ['dutyAdmin', 'Duty administrator'], ['preschool', 'Preschool']]
+export const DUTY_ROLES: [DutyRole, string][] = [['duty', 'On duty'], ['admin', 'Administrator'], ['dutyAdmin', 'Duty administrator'], ['preschool', 'Preschool'], ['none', 'No duty']]
 
 export function schoolDays(p: Project): Map<string, boolean[]> {
   const D = p.days.length, P = p.periods.length

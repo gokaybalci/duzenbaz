@@ -7,7 +7,7 @@ import { Icon } from '../icons'
 import { t } from '../i18n'
 import { colorVars, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
-import { update, useProject } from '../store'
+import { removeTeacher, update, useProject } from '../store'
 import { download, Modal, toast } from '../ui'
 import { xlsx } from '../xlsx'
 
@@ -94,6 +94,13 @@ export function DutyTeachersPage() {
   const days = dutyDays(p, school)
   const [name, setName] = useState('')
   const [stats, setStats] = useState<string | null>(null)
+  const remove = (id: string, n: string) => {
+    const lessons = p.lessons.filter(l => l.teacherIds.includes(id)).length
+    const duties = Object.values(p.duty.assign).reduce((a, row) => a + Object.values(row).filter(x => x === id).length, 0)
+    if (lessons && !confirm(t('"{name}" is used in {n} lessons. Delete anyway?', { name: n, n: lessons }))) return
+    if (!lessons && duties && !confirm(t('"{name}" has {n} duties. Delete anyway?', { name: n, n: duties }))) return
+    update(d => removeTeacher(d, id))
+  }
   const add = () => {
     const n = upperName(name.trim())
     if (!n) return
@@ -120,13 +127,13 @@ export function DutyTeachersPage() {
         <input placeholder={t('New teacher name…')} value={name} style={{ flex: 1, maxWidth: 360 }}
           onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
         <button className="btn primary" disabled={!name.trim()} onClick={add}>+ {t('Add teacher')}</button>
-        <span className="hint">{t('Teachers added here also appear in the timetable module.')}</span>
+        <span className="hint">{t('Teachers added or deleted here are also added to or deleted from the timetable module.')}</span>
       </div>
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
           <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')}</p>
           <table className="data">
-            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th></tr></thead>
+            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
               {p.teachers.map(te => {
                 const role = roleOf(p, te.id), on = days.get(te.id)!, base = school.get(te.id)!
@@ -159,6 +166,7 @@ export function DutyTeachersPage() {
                       <input type="checkbox" aria-label={t('Back-to-back duty')} checked={p.duty.consecutive[te.id] !== false}
                         onChange={e => update(d => { if (e.target.checked) delete d.duty.consecutive[te.id]; else d.duty.consecutive[te.id] = false })} />
                     </td>
+                    <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => remove(te.id, te.name)}><Icon n="trash" /></button></td>
                   </tr>
                 )
               })}

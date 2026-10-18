@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
 import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, weekdayOf } from '../src/duty'
-import { migrate } from '../src/store'
+import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
 const p = migrate(demoProject({ classes: 12 }))
@@ -18,6 +18,8 @@ p.placements = {}
 
 p.duty.days[t2.id] = [true, false, false, false, false, true, false]
 p.duty.role[t3.id] = 'admin'
+const t6 = p.teachers[6]
+p.duty.role[t6.id] = 'none'
 p.duty.manual[t4.id] = { '2026-08': 12 }
 p.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }, { id: 'c', name: 'KANTİN', count: 1 }]
 p.duty.specials = [{ id: 'h', from: '2026-10-28', to: '2026-10-29', name: 'Cumhuriyet Bayramı' }]
@@ -37,7 +39,7 @@ for (const m of months) for (const date of monthDates(m)) {
   else if (wd === 5) assert.deepEqual(ids, [t2.id], 'Saturday only goes to the teacher who ticked it')
   else assert.equal(ids.length, 4, 'every place filled on weekdays')
   assert.equal(new Set(ids).size, ids.length, 'nobody twice on the same day')
-  for (const id of ids) { assert.ok(days.get(id)![wd], 'only on ticked days'); assert.notEqual(id, t3.id, 'administrators get no duty') }
+  for (const id of ids) { assert.ok(days.get(id)![wd], 'only on ticked days'); assert.notEqual(id, t3.id, 'administrators get no duty'); assert.notEqual(id, t6.id, 'Nöbet tutmaz teachers get no duty') }
 }
 
 const all = months.flatMap(monthDates)
@@ -49,7 +51,7 @@ const fanDays = all.filter(d => Object.values(p.duty.assign[d] ?? {}).includes(f
 assert.ok(fanDays.length > 0 && fanDays.every(d => weekdayOf(d) === 2), 'a teacher who prefers Wednesday gets duty on Wednesdays')
 
 const c = dutyCounts(p, '2026-12-31')
-const full = p.teachers.filter(t => ![t0, t2, t3, t4].includes(t)).map(t => t.id)
+const full = p.teachers.filter(t => ![t0, t2, t3, t4, t6].includes(t)).map(t => t.id)
 const spread = (f: (id: string) => number) => Math.max(...full.map(f)) - Math.min(...full.map(f))
 for (const pl of p.duty.places) assert.ok(spread(id => c.get(id)!.places[pl.id] ?? 0) <= 1, `${pl.name}: places differ by at most one`)
 assert.ok(spread(id => c.get(id)!.total) <= 1, 'totals differ by at most one')
@@ -75,6 +77,16 @@ q.duty.places = [{ id: 'a', name: 'BAHÇE', count: 1 }, { id: 'b', name: 'BİNA'
 fillMonth(q, '2026-11')
 const qc = dutyCounts(q, '2026-11-30')
 assert.deepEqual(q.teachers.map(t => qc.get(t.id)!.total), [7, 7, 7, 7, 7, 7], 'a short-staffed weekday no longer leaves some teachers with 8 and others with 6')
+
+assert.ok(!monthView(p, '2026-12').duty.some(x => x.id === t6.id), 'Nöbet tutmaz teachers are left out of the counters')
+const gone = full[1], lessonsBefore = p.lessons.length
+const goneKey = Object.keys(p.duty.assign['2026-12-01'] ?? {}).find(k => p.duty.assign['2026-12-01'][k] === gone)
+if (goneKey) p.duty.locked[`2026-12-01|${goneKey}`] = true
+removeTeacher(p, gone)
+assert.ok(!p.teachers.some(x => x.id === gone) && !p.lessons.some(l => l.teacherIds.includes(gone)), 'deleting removes the teacher everywhere')
+assert.ok(!Object.values(p.duty.assign).some(row => Object.values(row).includes(gone)), 'and from the duty plan')
+assert.ok(!goneKey || !p.duty.locked[`2026-12-01|${goneKey}`], 'and from the locks')
+assert.equal(p.lessons.length, lessonsBefore, 'lessons stay, only the teacher leaves them')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

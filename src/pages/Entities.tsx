@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
 import { t } from '../i18n'
 import { newId, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
-import { prunePlacements, update, useProject } from '../store'
+import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
 import { AvailabilityEditor, MiniGrid, Modal, toast } from '../ui'
 
@@ -97,9 +97,9 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
       entity === 'subjects' ? l.subjectId === e.id : entity === 'teachers' ? l.teacherIds.includes(e.id) : entity === 'rooms' ? l.roomIds.includes(e.id) : l.classes.some(c => c.classId === e.id)).length
     if (used && !confirm(t('"{name}" is used in {n} lessons. Delete anyway?', { name: e.name, n: used }) + (entity === 'subjects' || entity === 'classes' ? '\n' + t('Those lessons will be deleted too.') : ''))) return
     update(d => {
+      if (entity === 'teachers') return removeTeacher(d, e.id)
       ;(d[entity] as Entity[]).splice((d[entity] as Entity[]).findIndex(x => x.id === e.id), 1)
       if (entity === 'subjects') d.lessons = d.lessons.filter(l => l.subjectId !== e.id)
-      if (entity === 'teachers') d.lessons.forEach(l => { l.teacherIds = l.teacherIds.filter(x => x !== e.id) })
       if (entity === 'rooms') d.lessons.forEach(l => { l.roomIds = l.roomIds.filter(x => x !== e.id) })
       if (entity === 'classes') {
         d.lessons.forEach(l => { l.classes = l.classes.filter(c => c.classId !== e.id) })

@@ -88,7 +88,7 @@ export interface DutyPlace {
   count: number
 }
 
-export type DutyRole = 'duty' | 'admin' | 'dutyAdmin' | 'preschool'
+export type DutyRole = 'duty' | 'admin' | 'dutyAdmin' | 'preschool' | 'none'
 
 export interface SpecialDay {
   id: string
