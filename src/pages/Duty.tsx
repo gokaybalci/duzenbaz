@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, fitsPlace, teachingHours, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, fitsPlace, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
@@ -10,6 +10,7 @@ import { colorVars, fileName, newId, pickColor, upperName, type DutyRole, type P
 import { native } from '../native'
 import { removeTeacher, update, useProject } from '../store'
 import { download, Modal, toast } from '../ui'
+import { loadOf } from '../timetable'
 import { xlsx } from '../xlsx'
 
 const fileBase = (p: Project, month: string) => `${fileName(p, 'okul')}_nobet_${month}`
@@ -93,7 +94,6 @@ export function DutyTeachersPage() {
   const p = useProject()
   const school = useMemo(() => schoolDays(p), [p])
   const days = dutyDays(p, school)
-  const hours = useMemo(() => teachingHours(p), [p])
   const [name, setName] = useState('')
   const [stats, setStats] = useState<string | null>(null)
   const [pasting, setPasting] = useState(false)
@@ -176,7 +176,7 @@ export function DutyTeachersPage() {
                         </select>
                       </td>
                     )}
-                    <td className="num">{hours.get(te.id) || ''}</td>
+                    <td className="num">{loadOf(p, 'teacher', te.id) || ''}</td>
                     <td style={{ textAlign: 'center' }}>
                       <input type="checkbox" aria-label={t('Back-to-back duty')} checked={p.duty.consecutive[te.id] !== false}
                         onChange={e => update(d => { if (e.target.checked) delete d.duty.consecutive[te.id]; else d.duty.consecutive[te.id] = false })} />

@@ -57,11 +57,11 @@ export default function App() {
   }, [])
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('input,textarea,select')) return
       const mod = e.ctrlKey || e.metaKey
+      if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(getProject(), e.shiftKey); return }
+      if ((e.target as HTMLElement).closest('input,textarea,select')) return
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
       else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo() }
-      else if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(getProject(), e.shiftKey) }
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)

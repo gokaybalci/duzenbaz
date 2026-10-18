@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, teachingHours, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { dutyCounts, dutyDays, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { loadOf } from '../src/timetable'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
@@ -133,7 +134,7 @@ assert.ok(Object.values(fx.duty.assign).some(r => Object.values(r).includes(f1.i
 
 const hw = migrate(demoProject({ classes: 12 }))
 hw.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }]
-const hrs = teachingHours(hw), ids = hw.teachers.map(t => t.id).filter(id => hrs.get(id)! > 0).sort((a, b) => hrs.get(a)! - hrs.get(b)!)
+const hrs = new Map(hw.teachers.map(t => [t.id, loadOf(hw, 'teacher', t.id)])), ids = hw.teachers.map(t => t.id).filter(id => hrs.get(id)! > 0).sort((a, b) => hrs.get(a)! - hrs.get(b)!)
 assert.ok(hrs.get(ids[ids.length - 1])! - hrs.get(ids[0])! >= 6, 'demo teachers have different lesson loads')
 assert.ok([...dutyWeights(hw, ids).values()].every(w => w === 1), 'weighting off gives every teacher the same weight')
 hw.duty.hoursWeight = 1

@@ -1,5 +1,6 @@
 import { t } from './i18n'
-import { lessonHours, parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
+import { parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
+import { loadOf } from './timetable'
 import { ref, S, type Cell, type Sheet } from './xlsx'
 
 export const DUTY_ROLES: [DutyRole, string][] = [['duty', 'On duty'], ['admin', 'Administrator'], ['dutyAdmin', 'Duty administrator'], ['preschool', 'Preschool'], ['none', 'No duty']]
@@ -97,21 +98,15 @@ export function prefersDay(p: Project, t: string, weekday: number, days = dutyDa
   return !pr || !on || !pr.some((x, i) => x && on[i]) || !!pr[weekday]
 }
 
-export const fixedPlace = (p: Project, t: string) => { const f = p.duty.fixed[t]; return f && p.duty.places.some(x => x.id === f && x.count > 0) ? f : '' }
+const fixedPlace = (p: Project, t: string) => { const f = p.duty.fixed[t]; return f && p.duty.places.some(x => x.id === f && x.count > 0) ? f : '' }
 
 export const fitsPlace = (p: Project, t: string, place: string) => { const f = fixedPlace(p, t); return !f || f === place }
 
 export const HOURS_WEIGHTS: [number, string][] = [[0, 'Balance off'], [0.25, 'Light balance'], [0.5, 'Medium balance'], [1, 'Strong balance']]
 
-export const teachingHours = (p: Project) => {
-  const out = new Map(p.teachers.map(t => [t.id, 0]))
-  for (const l of p.lessons) for (const t of l.teacherIds) out.set(t, (out.get(t) ?? 0) + lessonHours(l))
-  return out
-}
-
 export function dutyWeights(p: Project, pool: string[]) {
-  const hours = teachingHours(p), k = p.duty.hoursWeight || 0
-  const known = pool.map(t => hours.get(t) ?? 0).filter(h => h > 0)
+  const hours = new Map(pool.map(t => [t, loadOf(p, 'teacher', t)])), k = p.duty.hoursWeight || 0
+  const known = pool.map(t => hours.get(t)!).filter(h => h > 0)
   const mean = known.reduce((a, b) => a + b, 0) / (known.length || 1)
   return new Map(pool.map(t => {
     const h = hours.get(t) ?? 0
@@ -361,8 +356,6 @@ export function fillMonth(p: Project, month: string) {
     else delete p.duty.assign[date]
   }
 }
-
-export const totalOf = (c: Count) => c.total
 
 export const heat = (v: number, min: number, max: number): 'low' | 'mid' | 'high' => (max === min || v === min ? 'low' : v === max ? 'high' : 'mid')
 
