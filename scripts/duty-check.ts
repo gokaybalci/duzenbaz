@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
@@ -83,6 +83,11 @@ const qc = dutyCounts(q, '2026-11-30')
 assert.deepEqual(q.teachers.map(t => qc.get(t.id)!.total), [7, 7, 7, 7, 7, 7], 'a short-staffed weekday no longer leaves some teachers with 8 and others with 6')
 
 assert.deepEqual(uncoveredWeeks(q, '2026-11'), [], 'every teacher has at least one duty every week')
+for (const w of new Set(monthDates('2026-11').map(d => shiftDate(d, -weekdayOf(d)))))
+  for (const t of q.teachers) {
+    const places = Array.from({ length: 7 }, (_, i) => shiftDate(w, i)).flatMap(d => Object.entries(q.duty.assign[d] ?? {}).filter(([, x]) => x === t.id).map(([k]) => k.split('#')[0]))
+    assert.equal(new Set(places).size, places.length, `${t.name} week ${w}: two duties in one week are at different places`)
+  }
 for (const t of q.teachers) q.duty.consecutive[t.id] = false
 q.duty.specials = [{ id: 'h', from: '2026-11-16', to: '2026-11-20', name: 'Ara Tatil' }]
 fillMonth(q, '2026-11')

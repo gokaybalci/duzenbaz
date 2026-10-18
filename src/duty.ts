@@ -130,6 +130,17 @@ export function fillMonth(p: Project, month: string) {
   const weekOf = (date: string) => shiftDate(date, -weekdayOf(date))
   const wk = new Map<string, Map<string, number>>()
   const wcount = (t: string, w: string) => wk.get(w)?.get(t) ?? 0
+  const repeats = (t: string, w: string, skip = '') => {
+    const seen = new Set<string>()
+    let n = 0
+    for (let i = 0; i < 7; i++) {
+      const d = shiftDate(w, i)
+      if (d !== skip) for (const [key, x] of Object.entries(rowOf(d))) if (x === t) { const pl = place(key); if (seen.has(pl)) n++; else seen.add(pl) }
+    }
+    return n
+  }
+  const sameWeekPlace = (t: string, pl: string, date: string) =>
+    Array.from({ length: 7 }, (_, i) => shiftDate(weekOf(date), i)).some(d => d !== date && Object.entries(rowOf(d)).some(([key, x]) => x === t && place(key) === pl))
   const wadd = (t: string, w: string, n: number) => { let m = wk.get(w); if (!m) wk.set(w, (m = new Map())); m.set(t, (m.get(t) ?? 0) + n) }
   for (let d = weekOf(dates[0]); d <= shiftDate(weekOf(dates[dates.length - 1]), 6); d = shiftDate(d, 1))
     if (!rows.has(d)) for (const t of Object.values(p.duty.assign[d] ?? {})) wadd(t, weekOf(d), 1)
@@ -138,7 +149,7 @@ export function fillMonth(p: Project, month: string) {
   const cost = (t: string, pl: string, date: string) => {
     const l = last.get(t)
     return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2) + (near(t, date) ? 50 : 0)
-      + 0.01 * (past.get(t)! + (pastAt.get(t)![pl] ?? 0) / per.get(pl)!) + (wcount(t, weekOf(date)) ? 4 : 0)
+      + 0.01 * (past.get(t)! + (pastAt.get(t)![pl] ?? 0) / per.get(pl)!) + (wcount(t, weekOf(date)) ? 4 : 0) + (sameWeekPlace(t, pl, date) ? 3 : 0)
   }
 
   for (const date of dates) {
@@ -262,7 +273,7 @@ export function fillMonth(p: Project, month: string) {
   }
 
   const share = (t: string, pl: string) => ((at.get(t)?.[pl] ?? 0) + 0.01 * (pastAt.get(t)?.[pl] ?? 0)) / per.get(pl)!
-  const swapScore = (a: string, pa: string, b: string, pb: string) => share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+  const swapScore = (a: string, pa: string, b: string, pb: string) => 4 * (share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2)
   const trade = (a: string, pa: string, b: string, pb: string, dir: 1 | -1) => {
     at.get(a)![pa] -= dir; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + dir; at.get(b)![pb] -= dir; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + dir
   }
@@ -274,10 +285,12 @@ export function fillMonth(p: Project, month: string) {
         for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
           const a = row[keys[i]], b = row[keys[j]], pa = place(keys[i]), pb = place(keys[j])
           if (pa === pb) continue
-          const now = swapScore(a, pa, b, pb)
+          const w = weekOf(date)
+          const now = swapScore(a, pa, b, pb) + 5 * (repeats(a, w) + repeats(b, w))
           trade(a, pa, b, pb, 1)
-          if (swapScore(a, pa, b, pb) < now - 1e-9) { row[keys[i]] = b; row[keys[j]] = a; better = true }
-          else trade(a, pa, b, pb, -1)
+          row[keys[i]] = b; row[keys[j]] = a
+          if (swapScore(a, pa, b, pb) + 5 * (repeats(a, w) + repeats(b, w)) < now - 1e-9) better = true
+          else { trade(a, pa, b, pb, -1); row[keys[i]] = a; row[keys[j]] = b }
         }
       }
     }
@@ -295,13 +308,15 @@ export function fillMonth(p: Project, month: string) {
       const w1 = weekOf(c1.date), w2 = weekOf(c2.date)
       if (w1 !== w2 && ((wcount(a, w1) < 2 && wcount(b, w1) > 0) || (wcount(b, w2) < 2 && wcount(a, w2) > 0))) continue
       const miss = (x: string, d: string, except = '') => (likes(x, d) ? 0 : 10) + (near(x, d, except) ? 100 : 0)
-      const now = miss(a, c1.date) + miss(b, c2.date) + swapScore(a, pa, b, pb)
+      const variety = () => 5 * (repeats(a, w1) + repeats(b, w1) + (w1 === w2 ? 0 : repeats(a, w2) + repeats(b, w2)))
+      const now = miss(a, c1.date) + miss(b, c2.date) + swapScore(a, pa, b, pb) + variety()
+      const after0 = miss(a, c2.date, c1.date) + miss(b, c1.date, c2.date)
       trade(a, pa, b, pb, 1)
-      const after = miss(a, c2.date, c1.date) + miss(b, c1.date, c2.date) + swapScore(a, pa, b, pb)
-      if (after < now - 1e-9) {
-        r1[c1.key] = b; r2[c2.key] = a; better = true
+      r1[c1.key] = b; r2[c2.key] = a
+      if (after0 + swapScore(a, pa, b, pb) + variety() < now - 1e-9) {
+        better = true
         if (w1 !== w2) { wadd(a, w1, -1); wadd(a, w2, 1); wadd(b, w2, -1); wadd(b, w1, 1) }
-      } else trade(a, pa, b, pb, -1)
+      } else { trade(a, pa, b, pb, -1); r1[c1.key] = a; r2[c2.key] = b }
     }
   }
 
