@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { dutyCounts, dutyDays, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, teachingHours, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
@@ -109,6 +109,42 @@ assert.equal(p.lessons.length, lessonsBefore, 'lessons stay, only the teacher le
 
 const many = uncoveredWeeks(p, '2026-11')
 assert.ok(many.length > 0 && many.every(w => w.teachers.length <= full.length + 4 - 20), 'with more teachers than weekly places, only the unavoidable few miss a week, and they are reported')
+
+const fx = migrate(demoProject({ classes: 12 }))
+fx.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }, { id: 'c', name: 'KANTİN', count: 1 }]
+const [f1, f2] = fx.teachers
+fx.duty.fixed = { [f1.id]: 'c', [f2.id]: 'b' }
+for (const m of ['2026-09', '2026-10']) fillMonth(fx, m)
+const fxDates = ['2026-09', '2026-10'].flatMap(monthDates).filter(d => weekdayOf(d) < 5)
+for (const d of fxDates) {
+  const row = fx.duty.assign[d] ?? {}
+  assert.equal(Object.keys(row).length, 4, `${d}: every place filled with fixed places`)
+  for (const [k, x] of Object.entries(row)) {
+    if (x === f1.id) assert.equal(k.split('#')[0], 'c', 'a teacher fixed to KANTİN only stands at KANTİN')
+    if (x === f2.id) assert.equal(k.split('#')[0], 'b', 'a teacher fixed to BİNA only stands at BİNA')
+  }
+}
+const fxc = dutyCounts(fx, '2026-10-31'), fxAll = fx.teachers.map(t => fxc.get(t.id)!.total)
+assert.ok(fxc.get(f1.id)!.total > 0 && fxc.get(f2.id)!.total > 0, 'fixed teachers still get duties')
+assert.ok(Math.max(...fxAll) - Math.min(...fxAll) <= 1, 'totals stay balanced with fixed places')
+fx.duty.places = fx.duty.places.filter(x => x.id !== 'c')
+fillMonth(fx, '2026-11')
+assert.ok(Object.values(fx.duty.assign).some(r => Object.values(r).includes(f1.id)), 'a fixed place that was deleted no longer restricts the teacher')
+
+const hw = migrate(demoProject({ classes: 12 }))
+hw.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }]
+const hrs = teachingHours(hw), ids = hw.teachers.map(t => t.id).filter(id => hrs.get(id)! > 0).sort((a, b) => hrs.get(a)! - hrs.get(b)!)
+assert.ok(hrs.get(ids[ids.length - 1])! - hrs.get(ids[0])! >= 6, 'demo teachers have different lesson loads')
+assert.ok([...dutyWeights(hw, ids).values()].every(w => w === 1), 'weighting off gives every teacher the same weight')
+hw.duty.hoursWeight = 1
+for (const m of ['2026-09', '2026-10', '2026-11']) fillMonth(hw, m)
+const hwc = dutyCounts(hw, '2026-11-30'), third = Math.floor(ids.length / 3)
+const avg = (xs: string[]) => xs.reduce((a, id) => a + hwc.get(id)!.total, 0) / xs.length
+assert.ok(avg(ids.slice(-third)) < avg(ids.slice(0, third)), 'teachers with many lesson hours get fewer duties than teachers with few')
+for (const d of ['2026-09', '2026-10', '2026-11'].flatMap(monthDates).filter(d => weekdayOf(d) < 5))
+  assert.equal(Object.keys(hw.duty.assign[d] ?? {}).length, 3, `${d}: every place filled with weighting on`)
+const w = dutyWeights(hw, ids)
+for (let i = 1; i < ids.length; i++) if (hrs.get(ids[i])! > hrs.get(ids[i - 1])!) assert.ok(w.get(ids[i])! >= w.get(ids[i - 1])!, 'more hours never means a lighter weight')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

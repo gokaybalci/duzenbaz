@@ -56,6 +56,9 @@ export function SchoolPage() {
             <label className="field" style={{ flex: 1 }}>{t('Principal')}
               <input value={p.school.principal} onChange={e => update(d => { d.school.principal = e.target.value }, 'school.principal')} />
             </label>
+            <label className="field" style={{ flex: 1 }}>{t('Vice principal')}
+              <input value={p.school.vice} onChange={e => update(d => { d.school.vice = e.target.value }, 'school.vice')} />
+            </label>
           </div>
           <h3 style={{ marginTop: 8 }}>{t('Days')}</h3>
           <div className="row">

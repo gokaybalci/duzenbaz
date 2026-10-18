@@ -5,7 +5,7 @@ import { native } from '../native'
 import type { Issue, Progress, SolveResult } from '../solver/engine'
 import { evaluate } from '../solver/engine'
 import { defaultWorkers, runSolver, type RunHandle } from '../solver/runner'
-import { update, useProject } from '../store'
+import { getProject, update, useProject } from '../store'
 import { toast } from '../ui'
 
 const ISSUE_TEXT: Record<Issue['kind'], string> = {
@@ -70,6 +70,7 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
     const h = runSolver(p, { timeLimitMs: seconds * 1000, workers, keepPlacements: keep }, best => setProg(best))
     handle.current = h
     h.done.then(r => {
+      if (getProject().lessons !== p.lessons) { toast(t('The lessons changed while generating, so the result was discarded. Generate again.')); return }
       setResult(r)
       update(d => {
         const keepLocked = Object.fromEntries(Object.entries(d.placements).filter(([, v]) => v.locked))

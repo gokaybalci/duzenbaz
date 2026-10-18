@@ -150,7 +150,7 @@ export function ChipSelect<T extends { id: string; name: string; color?: string 
 
 export async function download(name: string, data: BlobPart, type: string) {
   const ext = name.split('.').pop()?.toLowerCase()
-  if (native && (ext === 'html' || ext === 'csv' || ext === 'xlsx')) {
+  if (native && (ext === 'html' || ext === 'csv' || ext === 'xlsx' || ext === 'duzenbaz')) {
     const bytes = new Uint8Array(await new Blob([data]).arrayBuffer())
     const saved = await native.saveExport(name, bytes, ext)
     if (saved) toast(t('Saved {name}', { name: saved }))

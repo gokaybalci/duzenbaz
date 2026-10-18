@@ -1,5 +1,5 @@
 import { t } from './i18n'
-import { parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
+import { lessonHours, parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
 import { ref, S, type Cell, type Sheet } from './xlsx'
 
 export const DUTY_ROLES: [DutyRole, string][] = [['duty', 'On duty'], ['admin', 'Administrator'], ['dutyAdmin', 'Duty administrator'], ['preschool', 'Preschool'], ['none', 'No duty']]
@@ -97,6 +97,28 @@ export function prefersDay(p: Project, t: string, weekday: number, days = dutyDa
   return !pr || !on || !pr.some((x, i) => x && on[i]) || !!pr[weekday]
 }
 
+export const fixedPlace = (p: Project, t: string) => { const f = p.duty.fixed[t]; return f && p.duty.places.some(x => x.id === f && x.count > 0) ? f : '' }
+
+export const fitsPlace = (p: Project, t: string, place: string) => { const f = fixedPlace(p, t); return !f || f === place }
+
+export const HOURS_WEIGHTS: [number, string][] = [[0, 'Balance off'], [0.25, 'Light balance'], [0.5, 'Medium balance'], [1, 'Strong balance']]
+
+export const teachingHours = (p: Project) => {
+  const out = new Map(p.teachers.map(t => [t.id, 0]))
+  for (const l of p.lessons) for (const t of l.teacherIds) out.set(t, (out.get(t) ?? 0) + lessonHours(l))
+  return out
+}
+
+export function dutyWeights(p: Project, pool: string[]) {
+  const hours = teachingHours(p), k = p.duty.hoursWeight || 0
+  const known = pool.map(t => hours.get(t) ?? 0).filter(h => h > 0)
+  const mean = known.reduce((a, b) => a + b, 0) / (known.length || 1)
+  return new Map(pool.map(t => {
+    const h = hours.get(t) ?? 0
+    return [t, k && h && mean ? Math.min(2, Math.max(0.5, 1 + (k * (h - mean)) / mean)) : 1]
+  }))
+}
+
 export function fillMonth(p: Project, month: string) {
   const slots = dutySlots(p)
   const per = new Map<string, number>()
@@ -106,6 +128,8 @@ export function fillMonth(p: Project, month: string) {
   const dates = monthDates(month)
   const history = dutyCounts(p, shiftDate(dates[0], -1))
   const past = new Map(pool.map(t => [t, history.get(t)!.total]))
+  const weight = dutyWeights(p, pool), wt = (t: string) => weight.get(t)!
+  const fits = (t: string, pl: string) => fitsPlace(p, t, pl)
   const pastAt = new Map(pool.map(t => {
     const h = history.get(t)!, places = { ...h.places }
     const byHand = h.total - Object.values(h.places).reduce((x, y) => x + y, 0)
@@ -149,8 +173,8 @@ export function fillMonth(p: Project, month: string) {
   for (const [date, row] of Object.entries(p.duty.assign)) if (date < dates[0]) for (const t of Object.values(row)) if (!last.has(t) || last.get(t)! < date) last.set(t, date)
   const cost = (t: string, pl: string, date: string) => {
     const l = last.get(t)
-    return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2) + (near(t, date) ? 50 : 0)
-      + 0.01 * (past.get(t)! + (pastAt.get(t)![pl] ?? 0) / per.get(pl)!) + (wcount(t, weekOf(date)) ? 4 : 0) + (sameWeekPlace(t, pl, date) ? 3 : 0)
+    return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! * wt(t) + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2) + (near(t, date) ? 50 : 0)
+      + 0.01 * (past.get(t)! * wt(t) + (pastAt.get(t)![pl] ?? 0) / per.get(pl)!) + (wcount(t, weekOf(date)) ? 4 : 0) + (sameWeekPlace(t, pl, date) ? 3 : 0)
   }
 
   for (const date of dates) {
@@ -162,7 +186,7 @@ export function fillMonth(p: Project, month: string) {
       const bench = pool.filter(t => !used.has(t) && there(t, date))
       open.forEach((s, i) => {
         let best = -1
-        bench.forEach((t, j) => { if (best < 0 || cost(t, s.place, date) < cost(bench[best], s.place, date)) best = j })
+        bench.forEach((t, j) => { if (fits(t, s.place) && (best < 0 || cost(t, s.place, date) < cost(bench[best], s.place, date))) best = j })
         if (best >= 0) pick[i] = bench.splice(best, 1)[0]
       })
       for (let better = true; better;) {
@@ -172,14 +196,14 @@ export function fillMonth(p: Project, month: string) {
           if (!a) continue
           for (let j = i + 1; j < open.length; j++) {
             const b = pick[j]
-            if (!b || open[i].place === open[j].place) continue
+            if (!b || open[i].place === open[j].place || !fits(a, open[j].place) || !fits(b, open[i].place)) continue
             if (cost(a, open[j].place, date) + cost(b, open[i].place, date) < cost(a, open[i].place, date) + cost(b, open[j].place, date) - 1e-9) {
               pick[i] = b; pick[j] = a; better = true
             }
           }
           for (let j = 0; j < bench.length; j++) {
             const cur = pick[i]!, b = bench[j]
-            if (cost(b, open[i].place, date) < cost(cur, open[i].place, date) - 1e-9) { pick[i] = b; bench[j] = cur; better = true }
+            if (fits(b, open[i].place) && cost(b, open[i].place, date) < cost(cur, open[i].place, date) - 1e-9) { pick[i] = b; bench[j] = cur; better = true }
           }
         }
       }
@@ -216,7 +240,7 @@ export function fillMonth(p: Project, month: string) {
           const row = rows.get(d)!
           if (!there(x, d) || Object.values(row).includes(x)) continue
           for (const [key, u] of Object.entries(row)) {
-            if (seen.has(u) || !free(d, key) || !total.has(u)) continue
+            if (seen.has(u) || !free(d, key) || !total.has(u) || !fits(x, place(key))) continue
             seen.add(u)
             prev.set(u, { to: x, date: d, key })
             if (wcount(u, w) >= 2) { goal = u; break }
@@ -234,9 +258,9 @@ export function fillMonth(p: Project, month: string) {
     }
   }
 
-  for (let moved = true; moved;) {
+  for (let moved = true, guard = 0; moved && guard < 100000; guard++) {
     moved = false
-    for (const src of [...pool].sort((a, b) => total.get(b)! - total.get(a)! || past.get(b)! - past.get(a)!)) {
+    for (const src of [...pool].sort((a, b) => total.get(b)! * wt(b) - total.get(a)! * wt(a) || past.get(b)! * wt(b) - past.get(a)! * wt(a))) {
       const prev = new Map<string, { from: string; date: string; key: string }>()
       const seen = new Set([src]), queue = [src]
       let goal = ''
@@ -248,12 +272,14 @@ export function fillMonth(p: Project, month: string) {
             if (owner !== x || !free(date, key)) continue
             const w = weekOf(date), lone = wcount(x, w) < 2
             for (const y of pool) {
-              if (seen.has(y) || onDay.has(y) || !can(y, date) || (lone && wcount(y, w) > 0)) continue
+              if (seen.has(y) || onDay.has(y) || !can(y, date) || !fits(y, place(key)) || (lone && wcount(y, w) > 0)) continue
               seen.add(y)
               prev.set(y, { from: x, date, key })
               queue.push(y)
-              const d = total.get(src)! - total.get(y)!
-              if (d >= 2 || (d === 1 && past.get(src)! + total.get(src)! - past.get(y)! - total.get(y)! >= 2)) { goal = y; break }
+              const ws = wt(src), wy = wt(y), half = (ws + wy) / 2
+              const d = total.get(src)! * ws - total.get(y)! * wy
+              const all = (past.get(src)! + total.get(src)!) * ws - (past.get(y)! + total.get(y)!) * wy
+              if (d > half + 1e-9 || (d > half - 1e-9 && all >= ws + wy - 1e-9)) { goal = y; break }
             }
             if (goal) break
           }
@@ -285,7 +311,7 @@ export function fillMonth(p: Project, month: string) {
         const keys = Object.keys(row).filter(k => free(date, k) && total.has(row[k]))
         for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
           const a = row[keys[i]], b = row[keys[j]], pa = place(keys[i]), pb = place(keys[j])
-          if (pa === pb) continue
+          if (pa === pb || !fits(a, pb) || !fits(b, pa)) continue
           const w = weekOf(date)
           const now = swapScore(a, pa, b, pb) + 5 * (repeats(a, w) + repeats(b, w))
           trade(a, pa, b, pb, 1)
@@ -305,7 +331,7 @@ export function fillMonth(p: Project, month: string) {
       const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
       const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
       if (c1.date === c2.date || a === b || Object.values(r1).includes(b) || Object.values(r2).includes(a)) continue
-      if (!there(b, c1.date) || !there(a, c2.date)) continue
+      if (!there(b, c1.date) || !there(a, c2.date) || !fits(b, pa) || !fits(a, pb)) continue
       const w1 = weekOf(c1.date), w2 = weekOf(c2.date)
       if (w1 !== w2 && ((wcount(a, w1) < 2 && wcount(b, w1) > 0) || (wcount(b, w2) < 2 && wcount(a, w2) > 0))) continue
       const miss = (x: string, d: string, except = '') => (likes(x, d) ? 0 : 10) + (near(x, d, except) ? 100 : 0)
@@ -362,6 +388,9 @@ export function buildSheet(p: Project, month: string, title: string): Sheet {
     const c = v.counts.get(te.id)!, h = heat(c.total, v.min, v.max)
     rows.push([{ v: te.name, s: S.Cell }, ...places.map(pl => ({ v: c.places[pl.id] ?? 0, s: S.Center })), { v: c.total, s: h === 'low' ? S.Low : h === 'mid' ? S.Mid : S.High }])
   }
+  rows.push([], [{ v: t('NOTIFIED TO'), s: S.Title }], [{ v: '#', s: S.Head }, { v: t('Teacher'), s: S.Head }, { v: t('Signature'), s: S.Head }])
+  v.duty.forEach((te, i) => rows.push([{ v: i + 1, s: S.Center }, { v: te.name, s: S.Cell }, { v: '', s: S.Cell }]))
+  rows.push([], [], [{ v: p.school.vice, s: S.Center }, null, null, { v: p.school.principal, s: S.Center }], [{ v: t('Vice principal'), s: S.Center }, null, null, { v: t('Principal'), s: S.Center }])
   return { name: t('Duty roster'), cols: [26, ...Array(width - 1).fill(20)], rows, merges }
 }
 

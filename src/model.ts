@@ -65,7 +65,7 @@ interface Weights {
 
 export interface Project {
   version: 1
-  school: { name: string; year: string; principal: string }
+  school: { name: string; year: string; principal: string; vice: string }
   days: string[]
   periods: Period[]
   avail: Grid
@@ -108,6 +108,8 @@ export interface Duty {
   manual: Record<string, Record<string, number>>
   consecutive: Record<string, boolean>
   prefer: Record<string, boolean[]>
+  fixed: Record<string, string>
+  hoursWeight: number
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
@@ -147,7 +149,7 @@ export function emptyProject(): Project {
   const times = ['08:30-09:10', '09:20-10:00', '10:10-10:50', '11:00-11:40', '11:50-12:30', '13:20-14:00', '14:10-14:50', '15:00-15:40']
   return {
     version: 1,
-    school: { name: '', year: '', principal: '' },
+    school: { name: '', year: '', principal: '', vice: '' },
     days,
     periods: times.map((t, i) => ({ label: String(i + 1), time: t })),
     avail: fullGrid(days.length, times.length),
@@ -161,7 +163,7 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
-    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {} },
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, hoursWeight: 0 },
   }
 }
 

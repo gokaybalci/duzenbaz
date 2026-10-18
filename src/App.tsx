@@ -130,6 +130,7 @@ export default function App() {
               <button onClick={() => { close(); pickFile() }}><Icon n="open" /> {t('Open…')}</button>
               <button onClick={() => { close(); save(p, false) }}><Icon n="save" /> {t('Save')} <span className="hint">Ctrl+S</span></button>
               {native && <button onClick={() => { close(); save(p, true) }}><Icon n="save" /> {t('Save as…')} <span className="hint">Ctrl+Shift+S</span></button>}
+              <button onClick={() => { close(); exportCopy(p) }}><Icon n="download" /> {t('Export dated copy')}</button>
               <hr />
               <button onClick={() => { close(); setDemoOpen(true) }}><Icon n="cap" /> {t('Load demo school')}</button>
             </>}
@@ -171,6 +172,13 @@ async function save(p: Project, saveAs: boolean) {
   }
   await download(name, json, 'application/json')
   toast(t('Saved {name}', { name }))
+}
+
+function exportCopy(p: Project) {
+  const now = new Date(), two = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${two(now.getDate())}.${two(now.getMonth() + 1)}.${now.getFullYear()}_${two(now.getHours())}.${two(now.getMinutes())}`
+  const name = `${(p.school.name || 'ders_programi').replace(/[^\p{L}\p{N}]+/gu, '_')}_${stamp}.duzenbaz`
+  return download(name, JSON.stringify(p, null, 1), 'application/json')
 }
 
 function SaveFolder() {

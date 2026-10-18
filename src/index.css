@@ -253,6 +253,8 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .ts .dt td.dd span { color: #555; }
 .ts .dt td.sp { color: #777; }
 .ts .dt-title { font-size: 16px; margin: 6px 0; }
+.ts .sig-list td { height: 26px; }
+.ts .signs { display: flex; justify-content: space-between; gap: 40px; margin-top: 10px; break-inside: avoid; }
 .heat-low { background: #63be7b; }
 .heat-mid { background: #ffeb84; }
 .heat-high { background: #f8696b; }
@@ -279,6 +281,16 @@ button.link:hover { text-decoration: underline; }
 .pref-days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pref-days button:disabled { opacity: .3; cursor: default; }
 .duty-tt .tcard.run { box-shadow: inset 0 0 0 2px var(--warn); }
+.duty-tt .tcard .swap { position: absolute; right: 3px; bottom: 2px; z-index: 1; background: none; border: 0; padding: 1px; color: var(--muted); cursor: pointer; line-height: 0; opacity: 0; }
+.duty-tt .tcard:hover .swap, .duty-tt .tcard .swap:focus-visible { opacity: 1; }
+.duty-tt .tcard .swap:hover { color: var(--accent); }
+.duty-tt .tcard .swap-target { position: absolute; inset: 0; z-index: 2; background: none; border: 0; border-radius: 6px; cursor: pointer; }
+.duty-tt .tcard .swap-target:hover { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); opacity: .6; }
+.duty-tt .tcard.swap-src { outline: 2px dashed var(--accent); outline-offset: 1px; }
+.duty-tt .tcard.hl { outline: 3px solid var(--accent); outline-offset: 0; box-shadow: 0 0 0 5px var(--accent-soft); z-index: 1; }
+.swap-bar { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.ts .dt button.link { color: inherit; font-weight: inherit; }
+.ts .dt button.link.hl { color: var(--accent); font-weight: 700; text-decoration: underline; }
 .module-row { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 14px; }
 .module-row .nav-item.module { margin: 0; }
 .module-row .nav-item.module.save { width: 40px; height: 40px; justify-content: center; padding: 0; align-self: center; }

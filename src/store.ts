@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { produce, type Draft } from 'immer'
 import { emptyProject, resizeGrid, upperName, type Project } from './model'
+import { native } from './native'
 
 const KEY = 'duzenbaz.project.v1'
 const MAX_HISTORY = 200
@@ -26,6 +27,7 @@ export function migrate(p: Partial<Project>): Project {
   for (const l of out.lessons) { l.link ??= ''; l.sameDayOk ??= false; l.roomIds ??= [] }
   out.placements ??= {}
   out.duty = { ...base.duty, ...p.duty }
+  out.school = { ...base.school, ...p.school }
   for (const e of [...out.subjects, ...out.teachers]) e.name = upperName(e.name)
   out.strictClasses ??= true
   out.useRooms ??= out.rooms.length > 0 && out.lessons.some(l => l.roomIds.length > 0)
@@ -63,9 +65,12 @@ export function update(fn: (d: Draft<Project>) => void, tag = '') {
   emit()
 }
 
+const loaded = new WeakSet<Project>()
+
 export function replaceProject(p: Project) {
   past.push(state); future = []
   state = migrate(p)
+  loaded.add(state)
   lastTag = ''
   emit()
 }
@@ -73,6 +78,7 @@ export function replaceProject(p: Project) {
 export function undo() {
   const prev = past.pop()
   if (!prev) return
+  if (loaded.has(state)) native?.forgetProjectPath()
   future.push(state); state = prev; lastTag = ''
   emit()
 }
@@ -80,6 +86,7 @@ export function undo() {
 export function redo() {
   const next = future.pop()
   if (!next) return
+  if (loaded.has(next)) native?.forgetProjectPath()
   past.push(state); state = next; lastTag = ''
   emit()
 }
@@ -108,7 +115,7 @@ export function removeTeacher(d: Draft<Project>, id: string) {
   d.teachers = d.teachers.filter(x => x.id !== id)
   d.lessons.forEach(l => { l.teacherIds = l.teacherIds.filter(x => x !== id) })
   prunePlacements(d)
-  for (const m of [d.duty.role, d.duty.days, d.duty.manual, d.duty.consecutive, d.duty.prefer]) delete m[id]
+  for (const m of [d.duty.role, d.duty.days, d.duty.manual, d.duty.consecutive, d.duty.prefer, d.duty.fixed]) delete m[id]
   for (const [date, row] of Object.entries(d.duty.assign))
     for (const [key, t] of Object.entries(row)) if (t === id) { delete row[key]; delete d.duty.locked[`${date}|${key}`] }
 }

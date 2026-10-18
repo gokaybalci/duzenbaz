@@ -42,7 +42,7 @@ export function demoTeacherRange(classes: number) {
 export function demoProject({ classes, teachers, withRooms = false }: DemoOptions = { classes: 12 }): Project {
   const p = emptyProject()
   p.schoolType = 'ortaokul'
-  p.school = { name: 'Örnek Ortaokulu', year: '2026-2027', principal: 'Hasan Yıldız' }
+  p.school = { name: 'Örnek Ortaokulu', year: '2026-2027', principal: 'Hasan Yıldız', vice: 'Ayten Kaya' }
   p.periods = p.periods.slice(0, 7)
   const D = p.days.length, P = p.periods.length
   p.avail = fullGrid(D, P)

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, MONTHS, MONTHS_ACC, allowsRun, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, fitsPlace, teachingHours, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
@@ -93,6 +93,7 @@ export function DutyTeachersPage() {
   const p = useProject()
   const school = useMemo(() => schoolDays(p), [p])
   const days = dutyDays(p, school)
+  const hours = useMemo(() => teachingHours(p), [p])
   const [name, setName] = useState('')
   const [stats, setStats] = useState<string | null>(null)
   const [pasting, setPasting] = useState(false)
@@ -135,9 +136,9 @@ export function DutyTeachersPage() {
       </div>
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
-          <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')}</p>
+          <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')} {t('A teacher with a fixed place only gets duty at that place.')}</p>
           <table className="data">
-            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
+            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th>{p.duty.places.length > 0 && <th>{t('Fixed place')}</th>}<th className="num">{t('Lesson hours')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
               {p.teachers.map(te => {
                 const role = roleOf(p, te.id), on = days.get(te.id)!, base = school.get(te.id)!
@@ -166,6 +167,16 @@ export function DutyTeachersPage() {
                         })}
                       </div>
                     </td>
+                    {p.duty.places.length > 0 && (
+                      <td>
+                        <select value={p.duty.places.some(x => x.id === p.duty.fixed[te.id]) ? p.duty.fixed[te.id] : ''} aria-label={t('Fixed place')}
+                          onChange={e => update(d => { if (e.target.value) d.duty.fixed[te.id] = e.target.value; else delete d.duty.fixed[te.id] })}>
+                          <option value="">—</option>
+                          {p.duty.places.map(pl => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
+                        </select>
+                      </td>
+                    )}
+                    <td className="num">{hours.get(te.id) || ''}</td>
                     <td style={{ textAlign: 'center' }}>
                       <input type="checkbox" aria-label={t('Back-to-back duty')} checked={p.duty.consecutive[te.id] !== false}
                         onChange={e => update(d => { if (e.target.checked) delete d.duty.consecutive[te.id]; else d.duty.consecutive[te.id] = false })} />
@@ -212,7 +223,7 @@ export function DutyPlacesPage() {
                   <td><input value={pl.name} onChange={e => update(d => { d.duty.places.find(x => x.id === pl.id)!.name = e.target.value }, 'dp.name')} /></td>
                   <td className="num"><input type="number" min={1} max={9} value={pl.count} style={{ width: 70 }}
                     onChange={e => update(d => { d.duty.places.find(x => x.id === pl.id)!.count = Math.max(1, Math.min(9, +e.target.value || 1)) }, 'dp.count')} /></td>
-                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => { if (confirm(t('Delete "{name}"?', { name: pl.name }))) update(d => { d.duty.places = d.duty.places.filter(x => x.id !== pl.id) }) }}><Icon n="trash" /></button></td>
+                  <td><button className="btn ghost small danger" title={t('Delete')} onClick={() => { if (confirm(t('Delete "{name}"?', { name: pl.name }))) update(d => { d.duty.places = d.duty.places.filter(x => x.id !== pl.id); for (const [k, v] of Object.entries(d.duty.fixed)) if (v === pl.id) delete d.duty.fixed[k] }) }}><Icon n="trash" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -268,7 +279,7 @@ export function DutySpecialsPage() {
   )
 }
 
-function Counters({ p, v }: { p: Project; v: ReturnType<typeof monthView> }) {
+function Counters({ p, v, hl, onPick }: { p: Project; v: ReturnType<typeof monthView>; hl?: string; onPick?: (id: string) => void }) {
   return (
     <>
       <h2 className="dt-title">{t('DUTY COUNTERS')}</h2>
@@ -279,7 +290,7 @@ function Counters({ p, v }: { p: Project; v: ReturnType<typeof monthView> }) {
             const c = v.counts.get(te.id)!
             return (
               <tr key={te.id}>
-                <td className="dd">{te.name}</td>
+                <td className="dd">{onPick ? <button className={`link ${hl === te.id ? 'hl' : ''}`} title={t('Highlight')} onClick={() => onPick(te.id)}>{te.name}</button> : te.name}</td>
                 {p.duty.places.map(pl => <td key={pl.id}>{c.places[pl.id] ?? 0}</td>)}
                 <td className={`heat-${heat(c.total, v.min, v.max)}`}>{c.total}</td>
               </tr>
@@ -287,6 +298,30 @@ function Counters({ p, v }: { p: Project; v: ReturnType<typeof monthView> }) {
           })}
         </tbody>
       </table>
+    </>
+  )
+}
+
+function Signatures({ p, v }: { p: Project; v: ReturnType<typeof monthView> }) {
+  const pairs = Array.from({ length: Math.ceil(v.duty.length / 2) }, (_, i) => [v.duty[2 * i], v.duty[2 * i + 1]] as const)
+  return (
+    <>
+      <h2 className="dt-title">{t('NOTIFIED TO')}</h2>
+      <table className="dt sig-list">
+        <thead><tr>{[0, 1].flatMap(k => [<th key={`n${k}`}>#</th>, <th key={`t${k}`}>{t('Teacher')}</th>, <th key={`s${k}`}>{t('Signature')}</th>])}</tr></thead>
+        <tbody>
+          {pairs.map(([a, b], i) => (
+            <tr key={a.id}>
+              <td>{2 * i + 1}</td><td className="dd">{a.name}</td><td />
+              {b ? <><td>{2 * i + 2}</td><td className="dd">{b.name}</td><td /></> : <><td /><td /><td /></>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="signs">
+        <div className="sign"><div>{p.school.vice}<br />{t('Vice principal')}</div></div>
+        <div className="sign"><div>{p.school.principal}<br />{t('Principal')}</div></div>
+      </div>
     </>
   )
 }
@@ -308,6 +343,14 @@ export function DutyPlanPage() {
   const locks = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
   const filled = v.rows.reduce((n, d) => n + Object.keys(d.row).length, 0) > locks
   const uncovered = useMemo(() => uncoveredWeeks(p, month), [p, month])
+  const [hl, setHl] = useState('')
+  const [swapFrom, setSwapFrom] = useState<{ date: string; key: string } | null>(null)
+  useEffect(() => {
+    if (!swapFrom) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setSwapFrom(null) }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [swapFrom])
   const runs = new Set<string>()
   let empty = 0
   for (const d of v.rows) {
@@ -324,6 +367,20 @@ export function DutyPlanPage() {
     if (tid) { row[key] = tid; d.duty.locked[`${date}|${key}`] = true }
     else { delete row[key]; delete d.duty.locked[`${date}|${key}`]; if (!Object.keys(row).length) delete d.duty.assign[date] }
   })
+  const swapTo = (date: string, key: string) => {
+    const a = swapFrom!
+    setSwapFrom(null)
+    if (a.date === date && a.key === key) return
+    update(d => {
+      const ra = (d.duty.assign[a.date] ??= {}), rb = (d.duty.assign[date] ??= {})
+      const x = ra[a.key], y = rb[key]
+      for (const [row, k, dt, v] of [[ra, a.key, a.date, y], [rb, key, date, x]] as const) {
+        if (v) { row[k] = v; d.duty.locked[`${dt}|${k}`] = true } else { delete row[k]; delete d.duty.locked[`${dt}|${k}`] }
+      }
+      for (const dt of [a.date, date]) if (!Object.keys(d.duty.assign[dt]).length) delete d.duty.assign[dt]
+    })
+    toast(t('Duties swapped'))
+  }
   const toggleLock = (date: string, key: string) => update(d => {
     const k = `${date}|${key}`
     if (d.duty.locked[k]) delete d.duty.locked[k]
@@ -351,6 +408,26 @@ export function DutyPlanPage() {
           }}><Icon n="trash" /> {t('Clear {m}', { m: (getLang() === 'tr' ? MONTHS_ACC : MONTHS)[Number(month.slice(5)) - 1] })}</button>
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
+        <div className="card pad row">
+          <label className="row" style={{ gap: 6 }}>{t('Lesson load balance')}
+            <select value={p.duty.hoursWeight || 0} onChange={e => update(d => { d.duty.hoursWeight = Number(e.target.value) })}>
+              {HOURS_WEIGHTS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+            </select>
+          </label>
+          <span className="hint" style={{ flex: 1 }}>{t('Teachers with more lesson hours get fewer duties. Takes effect the next time you distribute.')}</span>
+          <label className="row" style={{ gap: 6 }}>{t('Highlight')}
+            <select value={duty.some(x => x.id === hl) ? hl : ''} onChange={e => setHl(e.target.value)}>
+              <option value="">—</option>
+              {duty.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+          </label>
+        </div>
+        {swapFrom && (
+          <div className="card pad row swap-bar">
+            <Icon n="swap" /> <span style={{ flex: 1 }}>{t('Pick the cell to swap with {date} {place}. Esc cancels.', { date: trDate(swapFrom.date), place: places.get(swapFrom.key.split('#')[0]) ?? '' })}</span>
+            <button className="btn small" onClick={() => setSwapFrom(null)}><Icon n="x" /> {t('Cancel')}</button>
+          </div>
+        )}
         {(runs.size > 0 || empty > 0 || uncovered.length > 0) && (
           <div className="card pad stack">
             {runs.size > 0 && <span><span className="badge warn">{runs.size}</span> {t('Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.')}</span>}
@@ -375,10 +452,11 @@ export function DutyPlanPage() {
                       : off ? <td colSpan={slots.length} className="closed" />
                         : slots.map(s => {
                           const cur = d.row[s.key] ?? '', locked = !!p.duty.locked[`${d.date}|${s.key}`], te = teachers.get(cur)
-                          const options = duty.filter(x => days.get(x.id)![d.weekday] || x.id === cur)
+                          const options = duty.filter(x => (days.get(x.id)![d.weekday] && fitsPlace(p, x.id, s.place)) || x.id === cur)
+                          const src = swapFrom?.date === d.date && swapFrom.key === s.key
                           return (
                             <td key={s.key}>
-                              <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'} ${runs.has(`${d.date}|${s.key}`) ? 'run' : ''}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
+                              <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'} ${runs.has(`${d.date}|${s.key}`) ? 'run' : ''} ${cur && cur === hl ? 'hl' : ''} ${src ? 'swap-src' : ''}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
                                 <b>{te?.name ?? '—'}</b>
                                 <span>{places.get(s.place)}{cur ? ` · ${v.counts.get(cur)?.total ?? 0}` : ''}</span>
                                 <select value={cur} onChange={e => setCell(d.date, s.key, e.target.value)} aria-label={`${trDate(d.date)} ${places.get(s.place)}`}>
@@ -386,6 +464,9 @@ export function DutyPlanPage() {
                                   {options.map(x => <option key={x.id} value={x.id}>{x.name} ({v.counts.get(x.id)!.total})</option>)}
                                 </select>
                                 {cur && <button className="lock" title={locked ? t('Unlock') : t('Lock')} onClick={() => toggleLock(d.date, s.key)}><Icon n={locked ? 'lock' : 'unlock'} size={12} /></button>}
+                                {cur && !swapFrom && <button className="swap" title={t('Swap with another cell')} aria-label={t('Swap with another cell')} onClick={() => setSwapFrom({ date: d.date, key: s.key })}><Icon n="swap" size={12} /></button>}
+                                {swapFrom && !src && <button className="swap-target" aria-label={t('Swap here')} title={t('Swap here')} onClick={() => swapTo(d.date, s.key)} />}
+                                {src && <button className="swap-target" aria-label={t('Cancel')} title={t('Cancel')} onClick={() => setSwapFrom(null)} />}
                               </div>
                             </td>
                           )
@@ -396,7 +477,7 @@ export function DutyPlanPage() {
             </tbody>
           </table>
         </div>
-        <div className="sheet"><div className="ts"><Counters p={p} v={v} /></div></div>
+        <div className="sheet"><div className="ts"><Counters p={p} v={v} hl={hl} onPick={id => setHl(x => (x === id ? '' : id))} /></div></div>
       </>)}
     </div>
   )
@@ -442,6 +523,7 @@ export function DutyPrintPage() {
             </tbody>
           </table>
           <Counters p={p} v={v} />
+          <Signatures p={p} v={v} />
         </div></div>
       )}
     </div>
