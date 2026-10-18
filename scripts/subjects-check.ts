@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
-import { addMandatorySubjects, emptyProject, MANDATORY_SUBJECTS } from '../src/model'
+import { addMandatorySubjects, emptyProject, fileName, MANDATORY_SUBJECTS } from '../src/model'
 import { demoProject } from '../src/demo'
 import { migrate } from '../src/store'
+import { buildSheet, fillMonth } from '../src/duty'
 
 const p = emptyProject()
 assert.equal(addMandatorySubjects(p, 'ortaokul'), MANDATORY_SUBJECTS.ortaokul.length)
@@ -26,5 +27,24 @@ const l = emptyProject()
 addMandatorySubjects(l, 'ortaokul')
 assert.equal(addMandatorySubjects(l, 'lise'), 8)
 assert.equal(addMandatorySubjects(l, ''), 0)
+
+const oldFile = JSON.parse(JSON.stringify(demoProject({ classes: 4 })))
+delete oldFile.school.vice
+delete oldFile.duty.fixed
+delete oldFile.duty.hoursWeight
+oldFile.duty.places = [{ id: 'a', name: 'BAHÇE', count: 1 }]
+const o = migrate(oldFile)
+assert.equal(o.school.vice, '', 'a file from before Müdür Yardımcısı opens with an empty name')
+assert.deepEqual([o.duty.fixed, o.duty.hoursWeight], [{}, 0], 'and without fixed places or lesson load balance')
+fillMonth(o, '2026-11')
+assert.ok(Object.keys(o.duty.assign).length > 0 && buildSheet(o, '2026-11', 'x').rows.length > 0, 'and its duties can be distributed and exported')
+const noDuty = JSON.parse(JSON.stringify(demoProject({ classes: 4 })))
+delete noDuty.duty
+delete noDuty.school
+const n = migrate(noDuty)
+assert.ok(n.duty.places && n.duty.assign && n.duty.fixed && n.school.name === '', 'a file from before the duty module opens with empty duty data')
+
+const named = (name: string) => ({ ...emptyProject(), school: { name, year: '', principal: '', vice: '' } })
+assert.deepEqual([fileName(named(' Atatürk Ortaokulu ')), fileName(named('')), fileName(named('?!'), 'okul')], ['Atatürk_Ortaokulu', 'ders_programi', 'okul'], 'file names are cleaned the same way everywhere')
 
 console.log('subjects-check ok')

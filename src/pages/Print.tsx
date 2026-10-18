@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Icon } from '../icons'
 import { getLang, t } from '../i18n'
-import type { Project } from '../model'
+import { fileName, type Project } from '../model'
 import { useProject } from '../store'
 import { buildIndex, classLabel, entitiesOf, names, type Kind } from '../timetable'
 import { native } from '../native'
@@ -23,10 +23,6 @@ const WHAT: [What, string][] = [
 const FILE_SUFFIX: Record<What | Kind, string> = {
   class: 'sinif_programlari', teacher: 'ogretmen_programlari', room: 'derslik_programlari',
   'master-class': 'carsaf_siniflar', 'master-teacher': 'carsaf_ogretmenler', 'daily-class': 'gunluk_siniflar', 'daily-teacher': 'gunluk_ogretmenler',
-}
-
-function fileBase(p: Project) {
-  return (p.school.name || 'ders_programi').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'ders_programi'
 }
 
 function standaloneHtml(inner: string, title: string) {
@@ -84,8 +80,8 @@ export function PrintPage() {
       <div className="page-head no-print">
         <h2>{t('Print & share')}</h2>
         <button className="btn primary" disabled={!placed} onClick={() => window.print()}><Icon n="printer" /> {t('Print / Save as PDF')}</button>
-        <button className="btn" disabled={!placed} onClick={() => download(`${fileBase(p)}_${FILE_SUFFIX[what]}.html`, html(), 'text/html')}><Icon n="download" /> {native ? t('Save HTML') : t('Download HTML')}</button>
-        <button className="btn" disabled={!placed} onClick={() => download(`${fileBase(p)}_${FILE_SUFFIX[kind]}.csv`, csv(p, kind), 'text/csv')}><Icon n="download" /> {t('Excel (CSV)')}</button>
+        <button className="btn" disabled={!placed} onClick={() => download(`${fileName(p)}_${FILE_SUFFIX[what]}.html`, html(), 'text/html')}><Icon n="download" /> {native ? t('Save HTML') : t('Download HTML')}</button>
+        <button className="btn" disabled={!placed} onClick={() => download(`${fileName(p)}_${FILE_SUFFIX[kind]}.csv`, csv(p, kind), 'text/csv')}><Icon n="download" /> {t('Excel (CSV)')}</button>
       </div>
 
       <div className="card pad stack no-print">

@@ -6,13 +6,13 @@ import {
 import { Icon } from '../icons'
 import { PasteList } from './Entities'
 import { getLang, t } from '../i18n'
-import { colorVars, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
+import { colorVars, fileName, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
 import { removeTeacher, update, useProject } from '../store'
 import { download, Modal, toast } from '../ui'
 import { xlsx } from '../xlsx'
 
-const fileBase = (p: Project, month: string) => `${(p.school.name || 'okul').replace(/[^\p{L}\p{N}]+/gu, '_')}_nobet_${month}`
+const fileBase = (p: Project, month: string) => `${fileName(p, 'okul')}_nobet_${month}`
 const setMonth = (m: string) => update(d => { d.duty.month = m })
 const DMY = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/
 const toIso = (s: string) => { const m = DMY.exec(s.trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '' }

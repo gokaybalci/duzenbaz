@@ -231,6 +231,8 @@ export function addMandatorySubjects(p: Project, type: SchoolType): number {
 
 export const upperName = (s: string) => s.toLocaleUpperCase('tr')
 
+export const fileName = (p: Project, fallback = 'ders_programi') => p.school.name.replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '') || fallback
+
 export const lessonHours = (l: Lesson) => l.split.reduce((a, b) => a + b, 0)
 
 export function parseSplit(s: string): number[] | null {

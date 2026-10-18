@@ -11,6 +11,7 @@
     "bench": "tsx scripts/bench.ts",
     "check:duty": "tsx scripts/duty-check.ts",
     "check:subjects": "tsx scripts/subjects-check.ts",
+    "check:solver": "tsx scripts/solver-check.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "desktop:dev": "tauri dev"
   },

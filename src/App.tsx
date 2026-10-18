@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
-import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
+import { addMandatorySubjects, emptyProject, fileName, SCHOOL_TYPES, type Project, type SchoolType } from './model'
 import { DutyPlacesPage, DutyPlanPage, DutyPrintPage, DutySpecialsPage, DutyTeachersPage } from './pages/Duty'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
@@ -161,7 +161,7 @@ export default function App() {
 }
 
 async function save(p: Project, saveAs: boolean) {
-  const name = (p.school.name || 'ders_programi').replace(/[^\p{L}\p{N}]+/gu, '_') + '.duzenbaz'
+  const name = fileName(p) + '.duzenbaz'
   const json = JSON.stringify(p, null, 1)
   if (native) {
     try {
@@ -177,7 +177,7 @@ async function save(p: Project, saveAs: boolean) {
 function exportCopy(p: Project) {
   const now = new Date(), two = (n: number) => String(n).padStart(2, '0')
   const stamp = `${two(now.getDate())}.${two(now.getMonth() + 1)}.${now.getFullYear()}_${two(now.getHours())}.${two(now.getMinutes())}`
-  const name = `${(p.school.name || 'ders_programi').replace(/[^\p{L}\p{N}]+/gu, '_')}_${stamp}.duzenbaz`
+  const name = `${fileName(p)}_${stamp}.duzenbaz`
   return download(name, JSON.stringify(p, null, 1), 'application/json')
 }
 
