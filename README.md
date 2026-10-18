@@ -41,6 +41,10 @@ işlemci kullanımı neredeyse sıfırdır.
 | Linux (çoğu dağıtım) | `Duzenbaz_x.y.z_amd64.AppImage` | `chmod +x` ile çalıştırılabilir yapıp açın. Ubuntu 22.04 (glibc 2.35) üzerinde derlenir; Ubuntu 22.04+, Debian 12+, Fedora, Mint 21+ vb. üzerinde çalışır. |
 | Debian/Ubuntu, Fedora/openSUSE | `.deb`, `.rpm` | Tercih ederseniz yerel paketler. |
 
+**Windows'ta "Windows bilgisayarınızı korudu" uyarısı:** kurulum dosyası henüz kod imzalı olmadığı için
+Microsoft Defender SmartScreen yayımcıyı tanımaz ve uyarı gösterir. Kurmak için **Ek bilgi**'ye, ardından
+**Yine de çalıştır**'a tıklayın.
+
 **Windows 8 / 8.1 ve 7 desteklenmez.** Microsoft, bu tür uygulamaların kullandığı web motoru WebView2'yi
 Windows 7, 8 ve 8.1'de Ocak 2023'te 109. sürümde durdurdu; güncel Rust da artık bu sistemler için derleme
 yapmıyor. Bu sistemler için bir sürüm, resmi olmayan bir kaynaktan gelen, desteği bitmiş ve güvenlik
