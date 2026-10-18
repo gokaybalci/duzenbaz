@@ -35,13 +35,36 @@ const autoShort = (name: string) => {
   return (w.length > 1 ? w.map(x => x[0]).join('') : name.slice(0, 4)).toUpperCase()
 }
 
+function addEntities(entity: EntityKey, names: string[]) {
+  const clean = names.map(n => n.trim()).filter(Boolean)
+  if (!clean.length) return
+  update(d => {
+    for (const line of clean) {
+      const [name, short] = line.split('\t')
+      ;(d[entity] as Entity[]).push(makeEntity(entity, d as Project, name.trim(), short?.trim()))
+    }
+  })
+  toast(t('{n} added', { n: clean.length }))
+}
+
+export function PasteList({ entity, onClose }: { entity: EntityKey; onClose: () => void }) {
+  const [text, setText] = useState('')
+  return (
+    <Modal title={t('Paste list')} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={() => { addEntities(entity, text.split(/\r?\n/)); onClose() }}>{t('Add')}</button></>}>
+      <p className="hint" style={{ marginTop: 0 }}>{t('One per line. You can paste two columns from Excel: name and short name.')}</p>
+      <textarea rows={12} style={{ width: '100%' }} value={text} onChange={e => setText(e.target.value)} autoFocus />
+    </Modal>
+  )
+}
+
 export function EntitiesPage({ entity }: { entity: EntityKey }) {
   const p = useProject()
   const [q, setQ] = useState('')
   const [newName, setNewName] = useState('')
   const [availFor, setAvailFor] = useState<string | null>(null)
   const [groupsFor, setGroupsFor] = useState<string | null>(null)
-  const [paste, setPaste] = useState<string | null>(null)
+  const [paste, setPaste] = useState(false)
   const [sort, setSort] = useState<{ key: 'name' | 'short' | 'hours'; dir: 1 | -1 } | null>(null)
   const list = p[entity] as Entity[]
   const kind = KIND[entity]
@@ -77,17 +100,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
   )
   const openSlots = (e: Entity) => e.avail.split('').filter((c, i) => c !== '0' && p.avail[i] !== '0').length * (entity === 'rooms' ? (e as Room).capacity || 1 : 1)
 
-  const add = (names: string[]) => {
-    const clean = names.map(n => n.trim()).filter(Boolean)
-    if (!clean.length) return
-    update(d => {
-      for (const line of clean) {
-        const [name, short] = line.split('\t')
-        ;(d[entity] as Entity[]).push(makeEntity(entity, d as Project, name.trim(), short?.trim()))
-      }
-    })
-    toast(t('{n} added', { n: clean.length }))
-  }
+  const add = (names: string[]) => addEntities(entity, names)
 
   const edit = (id: string, fn: (e: Entity) => void, tag: string) =>
     update(d => { const e = (d[entity] as Entity[]).find(x => x.id === id); if (e) fn(e) }, tag + id)
@@ -117,7 +130,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
       <div className="page-head">
         <h2>{t(title)} <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>({list.length})</span></h2>
         <input placeholder={t('Search…')} value={q} onChange={e => setQ(e.target.value)} style={{ width: 200 }} />
-        <button className="btn" onClick={() => setPaste('')}>{t('Paste list')}</button>
+        <button className="btn" onClick={() => setPaste(true)}>{t('Paste list')}</button>
       </div>
       <div className="card pad row">
         <input placeholder={t('New {what} name…', { what: t(singular) })} value={newName} style={{ flex: 1, maxWidth: 360 }}
@@ -195,13 +208,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
 
       {groupsEntity && <GroupsModal cls={groupsEntity} onClose={() => setGroupsFor(null)} />}
 
-      {paste !== null && (
-        <Modal title={t('Paste list')} onClose={() => setPaste(null)}
-          footer={<><button className="btn" onClick={() => setPaste(null)}>{t('Cancel')}</button><button className="btn primary" onClick={() => { add(paste.split(/\r?\n/)); setPaste(null) }}>{t('Add')}</button></>}>
-          <p className="hint" style={{ marginTop: 0 }}>{t('One per line. You can paste two columns from Excel: name and short name.')}</p>
-          <textarea rows={12} style={{ width: '100%' }} value={paste} onChange={e => setPaste(e.target.value)} autoFocus />
-        </Modal>
-      )}
+      {paste && <PasteList entity={entity} onClose={() => setPaste(false)} />}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import {
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
+import { PasteList } from './Entities'
 import { t } from '../i18n'
 import { colorVars, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
@@ -94,6 +95,7 @@ export function DutyTeachersPage() {
   const days = dutyDays(p, school)
   const [name, setName] = useState('')
   const [stats, setStats] = useState<string | null>(null)
+  const [pasting, setPasting] = useState(false)
   const remove = (id: string, n: string) => {
     const lessons = p.lessons.filter(l => l.teacherIds.includes(id)).length
     const duties = Object.values(p.duty.assign).reduce((a, row) => a + Object.values(row).filter(x => x === id).length, 0)
@@ -128,6 +130,7 @@ export function DutyTeachersPage() {
         <input placeholder={t('New teacher name…')} value={name} style={{ flex: 1, maxWidth: 360 }}
           onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
         <button className="btn primary" disabled={!name.trim()} onClick={add}>+ {t('Add teacher')}</button>
+        <button className="btn" onClick={() => setPasting(true)}>{t('Paste list')}</button>
         <span className="hint">{t('Teachers added or deleted here are also added to or deleted from the timetable module.')}</span>
       </div>
       {p.teachers.length > 0 && (
@@ -176,6 +179,7 @@ export function DutyTeachersPage() {
         </div>
       )}
       {stats && p.teachers.some(x => x.id === stats) && <TeacherStats p={p} id={stats} onClose={() => setStats(null)} />}
+      {pasting && <PasteList entity="teachers" onClose={() => setPasting(false)} />}
     </div>
   )
 }
