@@ -107,10 +107,10 @@ export default function App() {
         ))}
         <div className="spacer" />
         <div className="module-row">
+          <button className="nav-item module save" title={t('Save') + ' (Ctrl+S)'} aria-label={t('Save')} onClick={() => save(p, false)}><Icon n="save" /></button>
           <button className="nav-item module" onClick={() => setPage(dutyMode ? 'start' : 'duty-teachers')}>
             <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
           </button>
-          <button className="nav-item module save" title={t('Save') + ' (Ctrl+S)'} aria-label={t('Save')} onClick={() => save(p, false)}><Icon n="save" /></button>
         </div>
         <AppearanceMenu />
         <div className="row" style={{ padding: '0 6px' }}>
