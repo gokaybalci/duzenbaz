@@ -28,7 +28,7 @@ export const tr: Record<string, string> = {
   'In the browser, files are saved to your Downloads folder.': 'Tarayıcıda dosyalar İndirilenler klasörüne kaydedilir.',
   'No duty in the week {from}–{to}: {names}. That week has fewer free places than teachers.': '{from}–{to} haftasında nöbeti olmayan: {names}. O hafta boş yer öğretmenden az.',
   'Lock every duty': 'Hepsini sabitle',
-  'Clear month': 'Ayı temizle',
+  'Clear {m}': '{m} temizle',
   'Clear all duties of {m}, including locked ones?': '{m} ayının tüm nöbetleri, sabitlenenler dahil, silinsin mi?',
   'Delete "{name}"?': '"{name}" silinsin mi?',
   'Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.': 'Bu kadar yerde arka arkaya nöbet önlenemedi: o günlerde başka uygun öğretmen yoktu. Bu kartlar sarı çerçevelidir.',

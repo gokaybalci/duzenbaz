@@ -26,6 +26,7 @@ export function schoolDays(p: Project): Map<string, boolean[]> {
 export const WEEKDAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
 export const WEEKDAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
 export const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+export const MONTHS_ACC = ["Ocak'ı", "Şubat'ı", "Mart'ı", "Nisan'ı", "Mayıs'ı", "Haziran'ı", "Temmuz'u", "Ağustos'u", "Eylül'ü", "Ekim'i", "Kasım'ı", "Aralık'ı"]
 
 export const dutyDays = (p: Project, school = schoolDays(p)) =>
   new Map(p.teachers.map(t => { const base = p.duty.days[t.id] ?? school.get(t.id)!; return [t.id, WEEKDAYS.map((_, d) => !!base[d])] }))

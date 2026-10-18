@@ -113,7 +113,7 @@ export default function App() {
           </button>
         </div>
         <SettingsMenu />
-        <div className="row" style={{ padding: '0 6px' }}>
+        <div className="row" style={{ padding: '0 6px', marginTop: 10 }}>
           <div className="btn-group">
             <LangBtn l="tr" /><LangBtn l="en" />
           </div>

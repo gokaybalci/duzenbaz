@@ -71,6 +71,7 @@ h3 { font-size: 15px; }
 .nav-item .count { margin-left: auto; font-size: 12px; color: var(--muted); }
 .nav-sep { height: 1px; background: var(--line); margin: 8px 6px; }
 .sidebar .spacer { flex: 1; }
+.sidebar > * { flex-shrink: 0; }
 
 .main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .topbar { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--line); flex-shrink: 0; }
@@ -262,7 +263,10 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .month-picker .btn { font-size: 18px; padding: 4px 12px; }
 button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
 button.link:hover { text-decoration: underline; }
+.duty-tt { width: auto; }
+.table-wrap:has(> .duty-tt) { width: fit-content; max-width: 100%; }
 .duty-tt th.ph { width: 104px; }
+.duty-tt th:not(.ph) { width: 170px; }
 .duty-tt td { height: 44px; }
 .duty-tt td.sp { text-align: center; vertical-align: middle; color: var(--muted); }
 .duty-tt .tcard { cursor: pointer; }
@@ -275,7 +279,7 @@ button.link:hover { text-decoration: underline; }
 .pref-days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pref-days button:disabled { opacity: .3; cursor: default; }
 .duty-tt .tcard.run { box-shadow: inset 0 0 0 2px var(--warn); }
-.module-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.module-row { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 14px; }
 .module-row .nav-item.module { margin: 0; }
 .module-row .nav-item.module.save { width: 40px; height: 40px; justify-content: center; padding: 0; align-self: center; }
 .save-dir { display: block; font-size: 11.5px; padding: 4px 6px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); overflow-wrap: anywhere; }

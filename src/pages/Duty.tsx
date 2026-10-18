@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, MONTHS, allowsRun, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, MONTHS, MONTHS_ACC, allowsRun, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
 import { PasteList } from './Entities'
-import { t } from '../i18n'
+import { getLang, t } from '../i18n'
 import { colorVars, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
 import { removeTeacher, update, useProject } from '../store'
@@ -348,7 +348,7 @@ export function DutyPlanPage() {
               for (const date of Object.keys(d.duty.assign)) if (date.startsWith(month)) delete d.duty.assign[date]
               for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k]
             })
-          }}><Icon n="trash" /> {t('Clear month')}</button>
+          }}><Icon n="trash" /> {t('Clear {m}', { m: (getLang() === 'tr' ? MONTHS_ACC : MONTHS)[Number(month.slice(5)) - 1] })}</button>
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
         {(runs.size > 0 || empty > 0 || uncovered.length > 0) && (
