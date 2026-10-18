@@ -22,6 +22,11 @@ p.duty.manual[t4.id] = { '2026-08': 12 }
 p.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }, { id: 'c', name: 'KANTİN', count: 1 }]
 p.duty.specials = [{ id: 'h', from: '2026-10-28', to: '2026-10-29', name: 'Cumhuriyet Bayramı' }]
 
+const noRun = p.teachers.filter((_, i) => i % 2 === 0).map(t => t.id)
+for (const id of noRun) p.duty.consecutive[id] = false
+const fan = p.teachers[5]
+p.duty.prefer[fan.id] = [false, false, true, false, false, false, false]
+
 const months = ['2026-09', '2026-10', '2026-11', '2026-12']
 for (const m of months) fillMonth(p, m)
 const days = dutyDays(p)
@@ -34,6 +39,14 @@ for (const m of months) for (const date of monthDates(m)) {
   assert.equal(new Set(ids).size, ids.length, 'nobody twice on the same day')
   for (const id of ids) { assert.ok(days.get(id)![wd], 'only on ticked days'); assert.notEqual(id, t3.id, 'administrators get no duty') }
 }
+
+const all = months.flatMap(monthDates)
+for (const id of noRun) for (let i = 1; i < all.length; i++) {
+  const on = (d: string) => Object.values(p.duty.assign[d] ?? {}).includes(id)
+  assert.ok(!(on(all[i]) && on(all[i - 1])), 'no back-to-back duty when Arka arkaya nöbet is off')
+}
+const fanDays = all.filter(d => Object.values(p.duty.assign[d] ?? {}).includes(fan.id))
+assert.ok(fanDays.length > 0 && fanDays.every(d => weekdayOf(d) === 2), 'a teacher who prefers Wednesday gets duty on Wednesdays')
 
 const c = dutyCounts(p, '2026-12-31')
 const full = p.teachers.filter(t => ![t0, t2, t3, t4].includes(t)).map(t => t.id)

@@ -106,6 +106,8 @@ export interface Duty {
   assign: Record<string, Record<string, string>>
   locked: Record<string, true>
   manual: Record<string, Record<string, number>>
+  consecutive: Record<string, boolean>
+  prefer: Record<string, boolean[]>
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
@@ -159,7 +161,7 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
-    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {} },
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {} },
   }
 }
 

@@ -87,6 +87,15 @@ export function dutyCounts(p: Project, until: string, from = ''): Map<string, Co
 
 const between = (a: string, b: string) => Math.round((parse(b).getTime() - parse(a).getTime()) / 864e5)
 
+export const shiftDate = (date: string, by: number) => { const d = parse(date); d.setDate(d.getDate() + by); return iso(d) }
+
+export const allowsRun = (p: Project, t: string) => p.duty.consecutive[t] !== false
+
+export function prefersDay(p: Project, t: string, weekday: number, days = dutyDays(p)) {
+  const pr = p.duty.prefer[t], on = days.get(t)
+  return !pr || !on || !pr.some((x, i) => x && on[i]) || !!pr[weekday]
+}
+
 export function fillMonth(p: Project, month: string) {
   const slots = dutySlots(p)
   const per = new Map<string, number>()
@@ -94,7 +103,7 @@ export function fillMonth(p: Project, month: string) {
   const days = dutyDays(p)
   const pool = p.teachers.filter(t => roleOf(p, t.id) === 'duty').map(t => t.id)
   const dates = monthDates(month)
-  const history = dutyCounts(p, iso(new Date(parse(dates[0]).getTime() - 864e5)))
+  const history = dutyCounts(p, shiftDate(dates[0], -1))
   const total = new Map(pool.map(t => [t, history.get(t)!.total]))
   const at = new Map(pool.map(t => {
     const h = history.get(t)!, places = { ...h.places }
@@ -102,22 +111,33 @@ export function fillMonth(p: Project, month: string) {
     for (const [pl, n] of per) places[pl] = (places[pl] ?? 0) + (byHand * n) / slots.length
     return [t, places]
   }))
-  const last = new Map<string, string>()
-  for (const [date, row] of Object.entries(p.duty.assign)) if (date < dates[0]) for (const t of Object.values(row)) if (!last.has(t) || last.get(t)! < date) last.set(t, date)
-  const cost = (t: string, place: string, date: string) => {
-    const l = last.get(t)
-    return ((at.get(t)![place] ?? 0) / per.get(place)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0)
-  }
+  const free = (date: string, key: string) => !p.duty.locked[`${date}|${key}`]
+  const place = (key: string) => key.split('#')[0]
   const rows = new Map<string, Record<string, string>>()
   for (const date of dates) {
-    const old = p.duty.assign[date] ?? {}
-    const row: Record<string, string> = {}
-    for (const s of slots) if (p.duty.locked[`${date}|${s.key}`] && old[s.key]) row[s.key] = old[s.key]
+    const old = p.duty.assign[date] ?? {}, row: Record<string, string> = {}
+    for (const s of slots) if (!free(date, s.key) && old[s.key]) row[s.key] = old[s.key]
+    rows.set(date, row)
+  }
+  const rowOf = (date: string) => rows.get(date) ?? p.duty.assign[date] ?? {}
+  const near = (t: string, date: string, except = '') =>
+    !allowsRun(p, t) && [shiftDate(date, -1), shiftDate(date, 1)].some(d => d !== except && Object.values(rowOf(d)).includes(t))
+  const can = (t: string, date: string, except = '') => days.get(t)![weekdayOf(date)] && !near(t, date, except)
+  const likes = (t: string, date: string) => prefersDay(p, t, weekdayOf(date), days)
+  const last = new Map<string, string>()
+  for (const [date, row] of Object.entries(p.duty.assign)) if (date < dates[0]) for (const t of Object.values(row)) if (!last.has(t) || last.get(t)! < date) last.set(t, date)
+  const cost = (t: string, pl: string, date: string) => {
+    const l = last.get(t)
+    return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2)
+  }
+
+  for (const date of dates) {
+    const row = rows.get(date)!
     if (!specialOn(p, date)) {
-      const wd = weekdayOf(date), used = new Set(Object.values(row))
+      const used = new Set(Object.values(row))
       const open = slots.filter(s => !row[s.key])
       const pick: (string | null)[] = open.map(() => null)
-      const bench = pool.filter(t => days.get(t)![wd] && !used.has(t))
+      const bench = pool.filter(t => !used.has(t) && can(t, date))
       open.forEach((s, i) => {
         let best = -1
         bench.forEach((t, j) => { if (best < 0 || cost(t, s.place, date) < cost(bench[best], s.place, date)) best = j })
@@ -145,16 +165,12 @@ export function fillMonth(p: Project, month: string) {
     }
     for (const [key, t] of Object.entries(row)) {
       if (!total.has(t)) continue
-      const pl = key.split('#')[0]
       total.set(t, total.get(t)! + 1)
-      at.get(t)![pl] = (at.get(t)![pl] ?? 0) + 1
+      at.get(t)![place(key)] = (at.get(t)![place(key)] ?? 0) + 1
       last.set(t, date)
     }
-    rows.set(date, row)
   }
 
-  const free = (date: string, key: string) => !p.duty.locked[`${date}|${key}`]
-  const place = (key: string) => key.split('#')[0]
   for (let moved = true; moved;) {
     moved = false
     for (const src of [...pool].sort((a, b) => total.get(b)! - total.get(a)!)) {
@@ -164,11 +180,11 @@ export function fillMonth(p: Project, month: string) {
       while (queue.length && !goal) {
         const x = queue.shift()!
         for (const [date, row] of rows) {
-          const onDay = new Set(Object.values(row)), wd = weekdayOf(date)
+          const onDay = new Set(Object.values(row))
           for (const [key, owner] of Object.entries(row)) {
             if (owner !== x || !free(date, key)) continue
             for (const y of pool) {
-              if (seen.has(y) || onDay.has(y) || !days.get(y)![wd]) continue
+              if (seen.has(y) || onDay.has(y) || !can(y, date)) continue
               seen.add(y)
               prev.set(y, { from: x, date, key })
               queue.push(y)
@@ -195,6 +211,10 @@ export function fillMonth(p: Project, month: string) {
   }
 
   const share = (t: string, pl: string) => (at.get(t)?.[pl] ?? 0) / per.get(pl)!
+  const swapScore = (a: string, pa: string, b: string, pb: string) => share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+  const trade = (a: string, pa: string, b: string, pb: string, dir: 1 | -1) => {
+    at.get(a)![pa] -= dir; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + dir; at.get(b)![pb] -= dir; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + dir
+  }
   for (let better = true; better;) {
     better = false
     for (const [date, row] of rows) {
@@ -202,11 +222,10 @@ export function fillMonth(p: Project, month: string) {
       for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
         const a = row[keys[i]], b = row[keys[j]], pa = place(keys[i]), pb = place(keys[j])
         if (pa === pb) continue
-        const now = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
-        at.get(a)![pa]--; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + 1; at.get(b)![pb]--; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + 1
-        const after = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
-        if (after < now - 1e-9) { row[keys[i]] = b; row[keys[j]] = a; better = true }
-        else { at.get(a)![pa]++; at.get(a)![pb]--; at.get(b)![pb]++; at.get(b)![pa]-- }
+        const now = swapScore(a, pa, b, pb)
+        trade(a, pa, b, pb, 1)
+        if (swapScore(a, pa, b, pb) < now - 1e-9) { row[keys[i]] = b; row[keys[j]] = a; better = true }
+        else trade(a, pa, b, pb, -1)
       }
     }
   }
@@ -217,13 +236,14 @@ export function fillMonth(p: Project, month: string) {
     for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) {
       const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
       const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
-      if (c1.date === c2.date || pa === pb || a === b) continue
-      if (Object.values(r1).includes(b) || Object.values(r2).includes(a) || !days.get(b)![weekdayOf(c1.date)] || !days.get(a)![weekdayOf(c2.date)]) continue
-      const now = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
-      at.get(a)![pa]--; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + 1; at.get(b)![pb]--; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + 1
-      const after = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+      if (c1.date === c2.date || a === b || Object.values(r1).includes(b) || Object.values(r2).includes(a)) continue
+      if (!can(b, c1.date, c2.date) || !can(a, c2.date, c1.date)) continue
+      const miss = (x: string, d: string) => (likes(x, d) ? 0 : 10)
+      const now = miss(a, c1.date) + miss(b, c2.date) + swapScore(a, pa, b, pb)
+      trade(a, pa, b, pb, 1)
+      const after = miss(a, c2.date) + miss(b, c1.date) + swapScore(a, pa, b, pb)
       if (after < now - 1e-9) { r1[c1.key] = b; r2[c2.key] = a; better = true }
-      else { at.get(a)![pa]++; at.get(a)![pb]--; at.get(b)![pb]++; at.get(b)![pa]-- }
+      else trade(a, pa, b, pb, -1)
     }
   }
 

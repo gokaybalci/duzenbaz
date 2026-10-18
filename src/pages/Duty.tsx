@@ -109,6 +109,9 @@ export function DutyTeachersPage() {
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head">
         <h2>{t('Teachers')} <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>({p.teachers.length})</span></h2>
+        <span className="hint">{t('Back-to-back duty')}:</span>
+        <button className="btn small" onClick={() => update(d => { d.duty.consecutive = {} })}><Icon n="check" /> {t('Tick all')}</button>
+        <button className="btn small" onClick={() => update(d => { d.duty.consecutive = Object.fromEntries(d.teachers.map(x => [x.id, false])) })}><Icon n="x" /> {t('Untick all')}</button>
         <button className="btn" disabled={!Object.keys(p.duty.days).length} onClick={() => { update(d => { d.duty.days = {} }); toast(t('Days taken from the timetable')) }}>
           <Icon n="undo" /> {t('Take days from the timetable again')}
         </button>
@@ -121,9 +124,9 @@ export function DutyTeachersPage() {
       </div>
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
-          <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics.')}</p>
+          <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')}</p>
           <table className="data">
-            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}</tr></thead>
+            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th></tr></thead>
             <tbody>
               {p.teachers.map(te => {
                 const role = roleOf(p, te.id), on = days.get(te.id)!, base = school.get(te.id)!
@@ -141,6 +144,21 @@ export function DutyTeachersPage() {
                         {on[i] !== !!base[i] && <span className="hint" title={t('Changed by hand')}> *</span>}
                       </td>
                     ))}
+                    <td>
+                      <div className="pref-days">
+                        {WEEKDAYS_SHORT.map((w, i) => {
+                          const pick = !!p.duty.prefer[te.id]?.[i] && on[i]
+                          return (
+                            <button key={i} className={pick ? 'on' : ''} disabled={!on[i]} aria-pressed={pick} title={WEEKDAYS[i]}
+                              onClick={() => update(d => { const a = WEEKDAYS.map((_, k) => !!d.duty.prefer[te.id]?.[k] && on[k]); a[i] = !pick; d.duty.prefer[te.id] = a })}>{w}</button>
+                          )
+                        })}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="checkbox" aria-label={t('Back-to-back duty')} checked={p.duty.consecutive[te.id] !== false}
+                        onChange={e => update(d => { if (e.target.checked) delete d.duty.consecutive[te.id]; else d.duty.consecutive[te.id] = false })} />
+                    </td>
                   </tr>
                 )
               })}
