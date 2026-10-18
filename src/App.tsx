@@ -112,7 +112,7 @@ export default function App() {
             <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
           </button>
         </div>
-        <AppearanceMenu />
+        <SettingsMenu />
         <div className="row" style={{ padding: '0 6px' }}>
           <div className="btn-group">
             <LangBtn l="tr" /><LangBtn l="en" />
@@ -165,7 +165,7 @@ async function save(p: Project, saveAs: boolean) {
   if (native) {
     try {
       const saved = await native.saveProject(json, saveAs, name)
-      if (saved) toast(t('Saved {name}', { name: saved }))
+      if (saved) toast(t('Saved to {path}', { path: saved }))
     } catch (e) { alert(t('Could not save the file') + ':\n' + String(e)) }
     return
   }
@@ -173,11 +173,28 @@ async function save(p: Project, saveAs: boolean) {
   toast(t('Saved {name}', { name }))
 }
 
-function AppearanceMenu() {
+function SaveFolder() {
+  const [dir, setDir] = useState<string | null>(null)
+  useEffect(() => { native?.getSaveDir().then(setDir).catch(() => {}) }, [])
+  if (!native) return <div className="hint" style={{ padding: '0 8px 8px' }}>{t('In the browser, files are saved to your Downloads folder.')}</div>
+  return (
+    <div className="stack" style={{ gap: 6, padding: '0 8px 8px' }}>
+      <code className="save-dir" title={dir ?? ''}>{dir ?? '…'}</code>
+      <button className="btn small" onClick={() => native!.chooseSaveDir().then(d => { if (d) { setDir(d); toast(t('Save folder: {path}', { path: d })) } }).catch(e => alert(String(e)))}>
+        <Icon n="folder" /> {t('Change folder…')}
+      </button>
+      <span className="hint">{t('Save (Ctrl+S) writes here without asking; Save as… asks for a place.')}</span>
+    </div>
+  )
+}
+
+function SettingsMenu() {
   const a = useAppearance()
   return (
-    <Menu up className="nav-item" label={<><Icon n="palette" />{t('Appearance')}</>}>
-      {() => <div style={{ width: 260 }}>
+    <Menu up className="nav-item" label={<><Icon n="settings" />{t('Settings')}</>}>
+      {() => <div style={{ width: 280 }}>
+        <div className="menu-title">{t('Save folder')}</div>
+        <SaveFolder />
         <div className="menu-title">{t('Colour theme')}</div>
         <div className="theme-grid">
           {THEMES.map(th => (
@@ -249,7 +266,7 @@ function DemoDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () =
     <Modal title={t('Demo school')} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
-        <button className="btn primary" disabled={!ok} onClick={() => { replaceProject(demoProject({ classes, teachers })); onCreate() }}>{t('Create')}</button>
+        <button className="btn primary" disabled={!ok} onClick={() => { native?.forgetProjectPath(); replaceProject(demoProject({ classes, teachers })); onCreate() }}>{t('Create')}</button>
       </>}>
       <div className="stack" style={{ maxWidth: 420 }}>
         <p className="hint" style={{ margin: 0 }}>{t('Creates a sample ortaokul (grades 5–8, 35 lesson hours a week per class). It replaces the current project; you can undo.')}</p>

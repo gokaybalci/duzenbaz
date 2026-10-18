@@ -278,3 +278,4 @@ button.link:hover { text-decoration: underline; }
 .module-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .module-row .nav-item.module { margin: 0; }
 .module-row .nav-item.module.save { width: 40px; height: 40px; justify-content: center; padding: 0; align-self: center; }
+.save-dir { display: block; font-size: 11.5px; padding: 4px 6px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); overflow-wrap: anywhere; }

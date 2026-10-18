@@ -28,10 +28,62 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
         .unwrap_or(false)
 }
 
-fn read_project(path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
+fn setting_file(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path().app_config_dir().ok().map(|d| d.join(name))
+}
+
+fn read_setting(app: &tauri::AppHandle, name: &str) -> Option<String> {
+    let v = fs::read_to_string(setting_file(app, name)?).ok()?;
+    let v = v.trim().to_string();
+    (!v.is_empty()).then_some(v)
+}
+
+fn write_setting(app: &tauri::AppHandle, name: &str, value: Option<&Path>) {
+    if let Some(f) = setting_file(app, name) {
+        match value {
+            Some(v) => {
+                if let Some(dir) = f.parent() {
+                    let _ = fs::create_dir_all(dir);
+                }
+                let _ = write_atomic(&f, v.to_string_lossy().as_bytes());
+            }
+            None => {
+                let _ = fs::remove_file(f);
+            }
+        }
+    }
+}
+
+fn set_current(app: &tauri::AppHandle, cur: &CurrentFile, path: Option<PathBuf>) {
+    write_setting(app, "current-file", path.as_deref());
+    *cur.0.lock().unwrap() = path;
+}
+
+fn save_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
+    read_setting(app, "save-dir")
+        .map(PathBuf::from)
+        .filter(|d| d.is_dir())
+        .or_else(|| documents_dir(app).map(|d| d.join("Düzenbaz")))
+}
+
+fn free_name(dir: &Path, suggested: &str) -> PathBuf {
+    let first = dir.join(suggested);
+    if !first.exists() {
+        return first;
+    }
+    let stem = Path::new(suggested).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    (2..)
+        .map(|n| dir.join(format!("{stem} ({n}).duzenbaz")))
+        .find(|p| !p.exists())
+        .unwrap()
+}
+
+fn read_project(app: &tauri::AppHandle, path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
     let data = fs::read(&path).map_err(|e| e.to_string())?;
-    *cur.0.lock().unwrap() = Some(path.clone());
-    Ok(OpenedFile { name: file_name(&path), data })
+    let name = file_name(&path);
+    set_current(app, cur, has_ext(&path, &["duzenbaz"]).then_some(path));
+    Ok(OpenedFile { name, data })
 }
 
 fn write_atomic(path: &Path, data: &[u8]) -> Result<(), String> {
@@ -54,13 +106,13 @@ fn documents_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
 #[tauri::command]
 async fn open_project(app: tauri::AppHandle, cur: State<'_, CurrentFile>) -> Result<Option<OpenedFile>, String> {
     let mut dlg = app.dialog().file().add_filter("Düzenbaz", &PROJECT_EXTS);
-    if let Some(d) = documents_dir(&app) {
+    if let Some(d) = save_dir(&app).filter(|d| d.is_dir()).or_else(|| documents_dir(&app)) {
         dlg = dlg.set_directory(d);
     }
     match dlg.blocking_pick_file() {
         Some(fp) => {
             let path = fp.into_path().map_err(|e| e.to_string())?;
-            read_project(path, &cur).map(Some)
+            read_project(&app, path, &cur).map(Some)
         }
         None => Ok(None),
     }
@@ -74,35 +126,59 @@ async fn save_project(
     save_as: bool,
     suggested: String,
 ) -> Result<Option<String>, String> {
-    let existing = if save_as { None } else { cur.0.lock().unwrap().clone() };
+    let existing = if save_as { None } else { cur.0.lock().unwrap().clone().filter(|p| p.parent().is_some_and(|d| d.is_dir())) };
     let path = match existing {
         Some(p) => p,
         None => {
-            let mut dlg = app.dialog().file().add_filter("Düzenbaz", &["duzenbaz"]).set_file_name(&suggested);
-            if let Some(d) = documents_dir(&app) {
-                dlg = dlg.set_directory(d);
-            }
-            match dlg.blocking_save_file() {
-                Some(fp) => {
-                    let mut p = fp.into_path().map_err(|e| e.to_string())?;
-                    if p.extension().is_none() {
-                        p.set_extension("duzenbaz");
+            let dir = save_dir(&app).ok_or("no folder to save in")?;
+            fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+            if save_as {
+                let dlg = app.dialog().file().add_filter("Düzenbaz", &["duzenbaz"]).set_file_name(&suggested).set_directory(&dir);
+                match dlg.blocking_save_file() {
+                    Some(fp) => {
+                        let mut p = fp.into_path().map_err(|e| e.to_string())?;
+                        if p.extension().is_none() {
+                            p.set_extension("duzenbaz");
+                        }
+                        p
                     }
-                    p
+                    None => return Ok(None),
                 }
-                None => return Ok(None),
+            } else {
+                free_name(&dir, &suggested)
             }
         }
     };
     write_atomic(&path, json.as_bytes())?;
-    let name = file_name(&path);
-    *cur.0.lock().unwrap() = Some(path);
-    Ok(Some(name))
+    let full = path.to_string_lossy().into_owned();
+    set_current(&app, &cur, Some(path));
+    Ok(Some(full))
 }
 
 #[tauri::command]
-fn forget_project_path(cur: State<'_, CurrentFile>) {
-    *cur.0.lock().unwrap() = None;
+fn forget_project_path(app: tauri::AppHandle, cur: State<'_, CurrentFile>) {
+    set_current(&app, &cur, None);
+}
+
+#[tauri::command]
+fn get_save_dir(app: tauri::AppHandle) -> Option<String> {
+    save_dir(&app).map(|d| d.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+async fn choose_save_dir(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let mut dlg = app.dialog().file();
+    if let Some(d) = save_dir(&app).filter(|d| d.is_dir()).or_else(|| documents_dir(&app)) {
+        dlg = dlg.set_directory(d);
+    }
+    match dlg.blocking_pick_folder() {
+        Some(fp) => {
+            let dir = fp.into_path().map_err(|e| e.to_string())?;
+            write_setting(&app, "save-dir", Some(&dir));
+            Ok(Some(dir.to_string_lossy().into_owned()))
+        }
+        None => Ok(None),
+    }
 }
 
 #[tauri::command]
@@ -131,9 +207,9 @@ fn cpu_count() -> usize {
 }
 
 #[tauri::command]
-fn startup_file(cur: State<'_, CurrentFile>) -> Option<OpenedFile> {
+fn startup_file(app: tauri::AppHandle, cur: State<'_, CurrentFile>) -> Option<OpenedFile> {
     let path = std::env::args_os().skip(1).map(PathBuf::from).find(|p| has_ext(p, &PROJECT_EXTS) && p.is_file())?;
-    read_project(path, &cur).ok()
+    read_project(&app, path, &cur).ok()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -141,7 +217,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(CurrentFile::default())
-        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, save_export, startup_file, cpu_count])
+        .setup(|app| {
+            use tauri::Manager;
+            let saved = read_setting(app.handle(), "current-file").map(PathBuf::from).filter(|p| p.is_file());
+            *app.state::<CurrentFile>().0.lock().unwrap() = saved;
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, get_save_dir, choose_save_dir, save_export, startup_file, cpu_count])
         .run(tauri::generate_context!())
         .expect("error while running Düzenbaz");
 }
