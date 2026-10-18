@@ -123,12 +123,13 @@ export function fillMonth(p: Project, month: string) {
   const near = (t: string, date: string, except = '') =>
     !allowsRun(p, t) && [shiftDate(date, -1), shiftDate(date, 1)].some(d => d !== except && Object.values(rowOf(d)).includes(t))
   const can = (t: string, date: string, except = '') => days.get(t)![weekdayOf(date)] && !near(t, date, except)
+  const there = (t: string, date: string) => days.get(t)![weekdayOf(date)]
   const likes = (t: string, date: string) => prefersDay(p, t, weekdayOf(date), days)
   const last = new Map<string, string>()
   for (const [date, row] of Object.entries(p.duty.assign)) if (date < dates[0]) for (const t of Object.values(row)) if (!last.has(t) || last.get(t)! < date) last.set(t, date)
   const cost = (t: string, pl: string, date: string) => {
     const l = last.get(t)
-    return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2)
+    return ((at.get(t)![pl] ?? 0) / per.get(pl)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0) + (likes(t, date) ? 0 : 2) + (near(t, date) ? 50 : 0)
   }
 
   for (const date of dates) {
@@ -137,7 +138,7 @@ export function fillMonth(p: Project, month: string) {
       const used = new Set(Object.values(row))
       const open = slots.filter(s => !row[s.key])
       const pick: (string | null)[] = open.map(() => null)
-      const bench = pool.filter(t => !used.has(t) && can(t, date))
+      const bench = pool.filter(t => !used.has(t) && there(t, date))
       open.forEach((s, i) => {
         let best = -1
         bench.forEach((t, j) => { if (best < 0 || cost(t, s.place, date) < cost(bench[best], s.place, date)) best = j })
@@ -237,11 +238,11 @@ export function fillMonth(p: Project, month: string) {
       const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
       const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
       if (c1.date === c2.date || a === b || Object.values(r1).includes(b) || Object.values(r2).includes(a)) continue
-      if (!can(b, c1.date, c2.date) || !can(a, c2.date, c1.date)) continue
-      const miss = (x: string, d: string) => (likes(x, d) ? 0 : 10)
+      if (!there(b, c1.date) || !there(a, c2.date)) continue
+      const miss = (x: string, d: string, except = '') => (likes(x, d) ? 0 : 10) + (near(x, d, except) ? 100 : 0)
       const now = miss(a, c1.date) + miss(b, c2.date) + swapScore(a, pa, b, pb)
       trade(a, pa, b, pb, 1)
-      const after = miss(a, c2.date) + miss(b, c1.date) + swapScore(a, pa, b, pb)
+      const after = miss(a, c2.date, c1.date) + miss(b, c1.date, c2.date) + swapScore(a, pa, b, pb)
       if (after < now - 1e-9) { r1[c1.key] = b; r2[c2.key] = a; better = true }
       else trade(a, pa, b, pb, -1)
     }

@@ -274,3 +274,4 @@ button.link:hover { text-decoration: underline; }
 .pref-days button { font: inherit; font-size: 11.5px; padding: 1px 5px; border-radius: 5px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); cursor: pointer; }
 .pref-days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pref-days button:disabled { opacity: .3; cursor: default; }
+.duty-tt .tcard.run { box-shadow: inset 0 0 0 2px var(--warn); }

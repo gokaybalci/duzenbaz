@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, MONTHS, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, MONTHS, allowsRun, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
@@ -301,6 +301,16 @@ export function DutyPlanPage() {
   const duty = v.duty
   const teachers = new Map(p.teachers.map(x => [x.id, x]))
   const locks = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
+  const runs = new Set<string>()
+  let empty = 0
+  for (const d of v.rows) {
+    if (d.special || !duty.some(x => days.get(x.id)![d.weekday])) continue
+    for (const s of slots) {
+      const id = d.row[s.key]
+      if (!id) { if (Object.keys(d.row).length || hasPlan(p, month)) empty++; continue }
+      if (!allowsRun(p, id)) for (const n of [shiftDate(d.date, -1), shiftDate(d.date, 1)]) if (Object.values(p.duty.assign[n] ?? {}).includes(id)) runs.add(`${d.date}|${s.key}`)
+    }
+  }
 
   const setCell = (date: string, key: string, tid: string) => update(d => {
     const row = (d.duty.assign[date] ??= {})
@@ -326,6 +336,12 @@ export function DutyPlanPage() {
           <button className="btn" disabled={!locks} onClick={() => update(d => { for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k] })}><Icon n="unlock" /> {t('Unlock all')} ({locks})</button>
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
+        {(runs.size > 0 || empty > 0) && (
+          <div className="card pad stack">
+            {runs.size > 0 && <span><span className="badge warn">{runs.size}</span> {t('Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.')}</span>}
+            {empty > 0 && <span><span className="badge bad">{empty}</span> {t('Empty cells: no ticked teacher is free on that day. Tick more days on the Teachers tab or fill them by hand.')}</span>}
+          </div>
+        )}
         <div className="card table-wrap">
           <table className="tt duty-tt">
             <thead><tr><th className="ph">{t('Date')}</th>{slots.map(s => <th key={s.key}>{places.get(s.place)}</th>)}</tr></thead>
@@ -344,7 +360,7 @@ export function DutyPlanPage() {
                           const options = duty.filter(x => days.get(x.id)![d.weekday] || x.id === cur)
                           return (
                             <td key={s.key}>
-                              <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
+                              <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'} ${runs.has(`${d.date}|${s.key}`) ? 'run' : ''}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
                                 <b>{te?.name ?? '—'}</b>
                                 <span>{places.get(s.place)}{cur ? ` · ${v.counts.get(cur)?.total ?? 0}` : ''}</span>
                                 <select value={cur} onChange={e => setCell(d.date, s.key, e.target.value)} aria-label={`${trDate(d.date)} ${places.get(s.place)}`}>

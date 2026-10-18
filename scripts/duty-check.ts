@@ -78,6 +78,12 @@ fillMonth(q, '2026-11')
 const qc = dutyCounts(q, '2026-11-30')
 assert.deepEqual(q.teachers.map(t => qc.get(t.id)!.total), [7, 7, 7, 7, 7, 7], 'a short-staffed weekday no longer leaves some teachers with 8 and others with 6')
 
+for (const t of q.teachers) q.duty.consecutive[t.id] = false
+q.duty.specials = [{ id: 'h', from: '2026-11-16', to: '2026-11-20', name: 'Ara Tatil' }]
+fillMonth(q, '2026-11')
+for (const d of monthDates('2026-11')) if (weekdayOf(d) < 5 && (d < '2026-11-16' || d > '2026-11-20'))
+  assert.equal(Object.keys(q.duty.assign[d] ?? {}).length, 2, `${d}: every place is filled even when back-to-back duty is off for everyone`)
+
 assert.ok(!monthView(p, '2026-12').duty.some(x => x.id === t6.id), 'Nöbet tutmaz teachers are left out of the counters')
 const gone = full[1], lessonsBefore = p.lessons.length
 const goneKey = Object.keys(p.duty.assign['2026-12-01'] ?? {}).find(k => p.duty.assign['2026-12-01'][k] === gone)

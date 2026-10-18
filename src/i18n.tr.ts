@@ -19,6 +19,8 @@ export const tr: Record<string, string> = {
   'Redo': 'Yinele',
   'Untitled school': 'Adsız okul',
   'New project': 'Yeni proje',
+  'Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.': 'Bu kadar yerde arka arkaya nöbet önlenemedi: o günlerde başka uygun öğretmen yoktu. Bu kartlar sarı çerçevelidir.',
+  'Empty cells: no ticked teacher is free on that day. Tick more days on the Teachers tab or fill them by hand.': 'Boş hücre: o gün işaretli ve uygun öğretmen yok. Öğretmenler sekmesinde daha fazla gün işaretleyin ya da elle doldurun.',
   'No duty': 'Nöbet tutmaz',
   '"{name}" has {n} duties. Delete anyway?': '"{name}" öğretmeninin {n} nöbeti var. Yine de silinsin mi?',
   'Teachers added or deleted here are also added to or deleted from the timetable module.': 'Buradan eklenen ya da silinen öğretmenler ders programı modülüne de eklenir ya da oradan silinir.',
