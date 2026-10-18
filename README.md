@@ -6,6 +6,19 @@ Windows ve Linux için hızlı bir masaüstü ders programı hazırlama uygulama
 (MEB kuralı), çakışmasız bir haftalık program çıkar. Sınıf ve öğretmen çizelgeleri, tüm sınıfların toplu
 görünümü ("çarşaf liste") ve günlük planlar yazdırılabilir.
 
+## Nöbet Modülü
+
+Kenar çubuğunun altındaki **Nöbet Modülü** düğmesiyle açılır; ders programıyla aynı öğretmen listesini kullanır.
+
+- **Öğretmenler:** görev durumu (Nöbet tutar, İdareci, Nöbetçi İdareci, Okul Öncesi, Nöbet tutmaz), nöbet
+  tutabileceği günler (ders programından gelir, elle değiştirilebilir), nöbet tercihi ve arka arkaya nöbet
+  izni. Öğretmen adına tıklayınca aylık nöbet istatistikleri açılır; önceki aylar elle girilebilir.
+- **Nöbet Yerleri** ve her yere günde kaç öğretmen gerektiği.
+- **Özel Günler:** bayram ve tatillerde nöbet verilmez.
+- **Nöbet Dağıt:** aylık çizelge. Herkese olabildiğince eşit sayıda nöbet ve her yerde eşit sayıda görev
+  verilir; sayımlar önceki aylardan devam eder. Hücreler elle değiştirilebilir, değiştirilenler sabitlenir.
+- **Yazdır ve Paylaş:** PDF, Excel (.xlsx) ve CSV çıktısı, nöbet sayaçlarıyla birlikte.
+
 ## Masaüstü uygulaması (gerçek okul verileri için önerilir)
 
 Düzenbaz, [Tauri](https://tauri.app) ile yapılmış küçük, yerel bir masaüstü uygulamasıdır. İşletim sisteminin
