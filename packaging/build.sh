@@ -18,14 +18,14 @@ if [[ "$WHAT" == all || "$WHAT" == linux ]]; then
   docker build -q -t duzenbaz-build:linux --build-arg UBUNTU=22.04 packaging
   rm -rf src-tauri/target/release/bundle
   run duzenbaz-build:linux "npx tauri build --bundles appimage,deb,rpm"
-  cp src-tauri/target/release/bundle/appimage/*.AppImage src-tauri/target/release/bundle/deb/*.deb \
+  cp --remove-destination src-tauri/target/release/bundle/appimage/*.AppImage src-tauri/target/release/bundle/deb/*.deb \
      src-tauri/target/release/bundle/rpm/*.rpm release/
 fi
 if [[ "$WHAT" == all || "$WHAT" == windows ]]; then
   docker build -q -t duzenbaz-build:windows --build-arg UBUNTU=24.04 packaging
   rm -rf src-tauri/target/x86_64-pc-windows-msvc/release/bundle
   run duzenbaz-build:windows "npx tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis"
-  cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe release/
+  cp --remove-destination src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe release/
 fi
 for f in release/*Düzenbaz*; do [[ -e "$f" ]] && mv -f "$f" "${f//Düzenbaz/Duzenbaz}"; done
 ls -lh release/
