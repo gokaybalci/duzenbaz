@@ -5,7 +5,8 @@ import { fileName, type Project } from '../model'
 import { useProject } from '../store'
 import { buildIndex, classLabel, entitiesOf, names, type Kind } from '../timetable'
 import { native } from '../native'
-import { download } from '../ui'
+import { navigate } from '../nav'
+import { download, Empty, PageTitle } from '../ui'
 import { DailySheet, defaultSheetOptions, EntitySheet, MasterSheet, SHEET_CSS, type SheetOptions } from './Sheets'
 
 type What = 'class' | 'teacher' | 'room' | 'master-class' | 'master-teacher' | 'daily-class' | 'daily-teacher'
@@ -78,7 +79,7 @@ export function PrintPage() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head no-print">
-        <h2>{t('Print & share')}</h2>
+        <PageTitle title={t('Print & share')} sub={t('Class, teacher and overview timetables')} />
         <button className="btn primary" disabled={!placed} onClick={() => window.print()}><Icon n="printer" /> {t('Print / Save as PDF')}</button>
         <button className="btn" disabled={!placed} onClick={() => download(`${fileName(p)}_${FILE_SUFFIX[what]}.html`, html(), 'text/html')}><Icon n="download" /> {native ? t('Save HTML') : t('Download HTML')}</button>
         <button className="btn" disabled={!placed} onClick={() => download(`${fileName(p)}_${FILE_SUFFIX[kind]}.csv`, csv(p, kind), 'text/csv')}><Icon n="download" /> {t('Excel (CSV)')}</button>
@@ -116,7 +117,7 @@ export function PrintPage() {
         <div className="hint">{t('Tip: in the print dialog choose "Save as PDF" to get a PDF file. Each timetable is printed on its own page.')}</div>
       </div>
 
-      {!placed ? <div className="card empty">{t('Generate a timetable first.')}</div> : (
+      {!placed ? <div className="card"><Empty icon="printer" action={<button className="btn primary" onClick={() => navigate('generate')}>{t('Go to Generate')} <Icon n="right" /></button>}>{t('Generate a timetable first.')}</Empty></div> : (
         <div className="sheets" ref={ref}>
           {isEntity && chosen.map(e => <div className="sheet" key={e.id}><EntitySheet p={p} idx={idx} n={n} kind={kind} id={e.id} o={o} /></div>)}
           {what.startsWith('master') && <div className="sheet"><MasterSheet p={p} idx={idx} n={n} kind={kind} short={true} colored={o.colored} /></div>}

@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Icon } from './icons'
+import { Icon, type IconName } from './icons'
 import { t } from './i18n'
 import type { Grid, Period } from './model'
 import { native } from './native'
+
+export function PageTitle({ title, count, sub }: { title: ReactNode; count?: ReactNode; sub?: ReactNode }) {
+  return (
+    <div className="page-title">
+      <h2>{title}{count !== undefined && <span className="page-count">{count}</span>}</h2>
+      {sub && <p className="page-sub">{sub}</p>}
+    </div>
+  )
+}
+
+export function Empty({ icon = 'sparkle', children, action }: { icon?: IconName; children: ReactNode; action?: ReactNode }) {
+  return <div className="empty"><Icon n={icon} size={26} /><p>{children}</p>{action}</div>
+}
 
 export function Modal({ title, onClose, children, footer, wide }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
   useEffect(() => {

@@ -13,31 +13,32 @@ import { SHEET_CSS } from './pages/Sheets'
 import { TimetablePage } from './pages/Timetable'
 import { native } from './native'
 import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
-import { canRedo, canUndo, getProject, redo, replaceProject, undo, useProject } from './store'
-import { download, Menu, Modal, toast, ToastHost } from './ui'
+import { canRedo, canUndo, getProject, markSaved, redo, replaceProject, undo, useProject, useSaved } from './store'
+import { setNavigator } from './nav'
+import { download, Menu, Modal, PageTitle, toast, ToastHost } from './ui'
 
 type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print' | DutyPage
 type DutyPage = 'duty-teachers' | 'duty-places' | 'duty-specials' | 'duty-plan' | 'duty-print'
 
-const NAV: [Page, IconName, string][] = [
-  ['start', 'home', 'Start'],
-  ['school', 'school', 'School & schedule'],
-  ['subjects', 'book', 'Subjects'],
-  ['teachers', 'teacher', 'Teachers'],
-  ['rooms', 'door', 'Rooms'],
-  ['classes', 'users', 'Classes'],
-  ['lessons', 'puzzle', 'Lessons'],
-  ['generate', 'zap', 'Generate'],
-  ['timetable', 'calendar', 'Timetable'],
-  ['print', 'printer', 'Print & share'],
+const NAV: [Page, IconName, string, string][] = [
+  ['start', 'home', 'Start', ''],
+  ['school', 'school', 'School & schedule', 'Setup'],
+  ['subjects', 'book', 'Subjects', 'Setup'],
+  ['teachers', 'teacher', 'Teachers', 'Setup'],
+  ['rooms', 'door', 'Rooms', 'Setup'],
+  ['classes', 'users', 'Classes', 'Setup'],
+  ['lessons', 'puzzle', 'Lessons', 'Setup'],
+  ['generate', 'zap', 'Generate', 'Scheduling'],
+  ['timetable', 'calendar', 'Timetable', 'Scheduling'],
+  ['print', 'printer', 'Print & share', 'Output'],
 ]
 
-const DUTY_NAV: [DutyPage, IconName, string][] = [
-  ['duty-teachers', 'teacher', 'Teachers'],
-  ['duty-places', 'door', 'Duty places'],
-  ['duty-specials', 'calendar', 'Special days'],
-  ['duty-plan', 'zap', 'Distribute duties'],
-  ['duty-print', 'printer', 'Print & share'],
+const DUTY_NAV: [DutyPage, IconName, string, string][] = [
+  ['duty-teachers', 'teacher', 'Teachers', 'Setup'],
+  ['duty-places', 'door', 'Duty places', 'Setup'],
+  ['duty-specials', 'calendar', 'Special days', 'Setup'],
+  ['duty-plan', 'zap', 'Distribute duties', 'Scheduling'],
+  ['duty-print', 'printer', 'Print & share', 'Output'],
 ]
 const PAGES = new Set<string>([...NAV, ...DUTY_NAV].map(([id]) => id))
 
@@ -46,6 +47,10 @@ export default function App() {
   useLang()
   const [page, setPage] = useState<Page>(() => { const s = localStorage.getItem('duzenbaz.page') ?? ''; return PAGES.has(s) ? s as Page : 'start' })
   const dutyMode = page.startsWith('duty-')
+  const isSaved = useSaved()
+  const lastOf = useRef<Record<'tt' | 'duty', Page>>({ tt: 'start', duty: 'duty-teachers' })
+  lastOf.current[dutyMode ? 'duty' : 'tt'] = page
+  useEffect(() => setNavigator(pg => { if (PAGES.has(pg)) setPage(pg as Page) }), [])
   const fileInput = useRef<HTMLInputElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
@@ -69,6 +74,7 @@ export default function App() {
 
   const counts: Partial<Record<Page, number>> = {
     subjects: p.subjects.length, teachers: p.teachers.length, rooms: p.rooms.length, classes: p.classes.length, lessons: p.lessons.length,
+    'duty-teachers': p.teachers.length, 'duty-places': p.duty.places.length, 'duty-specials': p.duty.specials.length,
   }
 
   const open = async (f: { name: string; arrayBuffer(): Promise<ArrayBuffer> }) => {
@@ -77,6 +83,7 @@ export default function App() {
       const proj: Project = JSON.parse(new TextDecoder().decode(buf))
       if (!proj.days || !proj.lessons) throw new Error(t('Not a timetable project file'))
       replaceProject(proj)
+      markSaved(getProject())
       toast(t('Opened {name}', { name: f.name }))
       setPage(Object.keys(proj.placements ?? {}).length ? 'timetable' : 'lessons')
     } catch (e) {
@@ -97,21 +104,19 @@ export default function App() {
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
         <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
-        {(dutyMode ? DUTY_NAV : NAV.filter(([id]) => id !== 'rooms' || p.useRooms)).map(([id, icon, label], i) => (
+        <div className="mod-switch" role="group" aria-label={t('Module')}>
+          <button className={dutyMode ? '' : 'on'} aria-pressed={!dutyMode} onClick={() => dutyMode && setPage(lastOf.current.tt)}>{t('Timetable')}</button>
+          <button className={dutyMode ? 'on' : ''} aria-pressed={dutyMode} onClick={() => !dutyMode && setPage(lastOf.current.duty)}>{t('Duty')}</button>
+        </div>
+        {(dutyMode ? DUTY_NAV : NAV.filter(([id]) => id !== 'rooms' || p.useRooms)).map(([id, icon, label, group], i, all) => (
           <div key={id} style={{ display: 'contents' }}>
-            {!dutyMode && (i === 2 || i === 7) && <div className="nav-sep" />}
+            {group && group !== all[i - 1]?.[3] && <div className="nav-group">{t(group)}</div>}
             <button className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>
               <Icon n={icon} />{t(label)}{counts[id] !== undefined && <span className="count">{counts[id]}</span>}
             </button>
           </div>
         ))}
         <div className="spacer" />
-        <div className="module-row">
-          <button className="nav-item module save" title={t('Save') + ' (Ctrl+S)'} aria-label={t('Save')} onClick={() => save(p, false)}><Icon n="save" /></button>
-          <button className="nav-item module" onClick={() => setPage(dutyMode ? 'start' : 'duty-teachers')}>
-            <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
-          </button>
-        </div>
         <SettingsMenu />
         <div className="row" style={{ padding: '0 6px', marginTop: 10 }}>
           <div className="btn-group">
@@ -122,6 +127,8 @@ export default function App() {
       <div className="main">
         <header className="topbar no-print">
           <div className="title">{p.school.name || t('Untitled school')} {p.school.year && <span className="hint">· {p.school.year}</span>}</div>
+          <span className={`save-state ${isSaved ? 'ok' : ''}`}><i />{t(isSaved ? 'Saved' : 'Unsaved changes')}</span>
+          <button className="btn" onClick={() => save(getProject(), false)} title={t('Save') + ' (Ctrl+S)'}><Icon n="save" /> {t('Save')}</button>
           <button className="btn ghost icon" onClick={undo} disabled={!canUndo()} title={t('Undo') + ' (Ctrl+Z)'}><Icon n="undo" /></button>
           <button className="btn ghost icon" onClick={redo} disabled={!canRedo()} title={t('Redo') + ' (Ctrl+Y)'}><Icon n="redo" /></button>
           <Menu label={<><Icon n="folder" /> {t('File')} <Icon n="down" size={12} /></>}>
@@ -166,11 +173,12 @@ async function save(p: Project, saveAs: boolean) {
   if (native) {
     try {
       const saved = await native.saveProject(json, saveAs, name)
-      if (saved) toast(t('Saved to {path}', { path: saved }))
+      if (saved) { markSaved(p); toast(t('Saved to {path}', { path: saved })) }
     } catch (e) { alert(t('Could not save the file') + ':\n' + String(e)) }
     return
   }
   await download(name, json, 'application/json')
+  markSaved(p)
   toast(t('Saved {name}', { name }))
 }
 
@@ -307,23 +315,29 @@ function StartPage({ go, openFile, openDemo }: { go: (p: Page) => void; openFile
     ['generate', 'Generate', 'Distribute all lessons automatically', Object.keys(p.placements).length > 0],
     ['print', 'Print & share', 'Class, teacher and overview timetables', false],
   ]
+  const doneCount = steps.slice(0, -1).filter(x => x[3]).length
+  const next = Math.max(0, steps.findIndex(x => !x[3]))
   return (
-    <div className="stack" style={{ gap: 16, maxWidth: 820 }}>
-      <div className="page-head"><h2>{t('Welcome')}</h2></div>
-      <div className="card pad stack">
-        <p style={{ margin: 0 }}>{native ? t('Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.') : t('Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.')}</p>
-        <div className="row">
-          <button className="btn primary" onClick={() => go('school')}>{t('Start setting up')}</button>
-          <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file')}</button>
-          <button className="btn" onClick={openDemo}><Icon n="cap" /> {t('Try the demo school')}</button>
-        </div>
+    <div className="stack narrow" style={{ gap: 16 }}>
+      <div className="page-head">
+        <PageTitle title={t('Welcome')} sub={native ? t('Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.') : t('Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.')} />
+      </div>
+      <div className="row">
+        <button className="btn primary" onClick={() => go(steps[next][0])}>{doneCount ? t('Continue: {step}', { step: t(steps[next][1]) }) : t('Start setting up')} <Icon n="right" /></button>
+        <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file')}</button>
+        <button className="btn" onClick={openDemo}><Icon n="cap" /> {t('Try the demo school')}</button>
       </div>
       <div className="card">
+        <div className="steps-head">
+          <b>{t('{n} of {m} steps done', { n: doneCount, m: steps.length - 1 })}</b>
+          <div className="progress"><div style={{ width: `${(doneCount / (steps.length - 1)) * 100}%` }} /></div>
+        </div>
         {steps.map(([pg, title, desc, done], i) => (
-          <button key={pg} className="nav-item" style={{ width: '100%', padding: '12px 16px', borderRadius: 0, borderBottom: '1px solid var(--line)' }} onClick={() => go(pg)}>
-            <span className={`badge ${done ? 'ok' : ''}`} style={{ minWidth: 26, textAlign: 'center' }}>{done ? <Icon n="check" size={12} /> : i + 1}</span>
+          <button key={pg} className={`step ${done ? 'done' : ''} ${i === next ? 'next' : ''}`} onClick={() => go(pg)}>
+            <span className="num">{done ? <Icon n="check" size={14} /> : i + 1}</span>
             <span className="stack" style={{ gap: 0 }}><b>{t(title)}</b><span className="hint">{t(desc)}</span></span>
-            <span style={{ marginLeft: 'auto' }} className="hint"><Icon n="right" /></span>
+            {i === next && <span className="next-tag">{t('Next')}</span>}
+            <Icon n="right" />
           </button>
         ))}
       </div>

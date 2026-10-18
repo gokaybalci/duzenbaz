@@ -4,6 +4,7 @@ import { emptyProject, resizeGrid, upperName, type Project } from './model'
 import { native } from './native'
 
 const KEY = 'duzenbaz.project.v1'
+const SAVED_KEY = 'duzenbaz.saved'
 const MAX_HISTORY = 200
 
 function load(): Project {
@@ -40,16 +41,23 @@ let future: Project[] = []
 let lastTag = '', lastTagAt = 0
 const listeners = new Set<() => void>()
 let saveTimer: number | undefined
+let saved: Project | null = null
+try { if (localStorage.getItem(SAVED_KEY) === '1') saved = state } catch {}
 
 function emit() {
   listeners.forEach(l => l())
   clearTimeout(saveTimer)
   saveTimer = window.setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)) } catch {}
+    try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.setItem(SAVED_KEY, state === saved ? '1' : '0') } catch {}
   }, 400)
 }
 
 export const getProject = () => state
+
+export function markSaved(p: Project) {
+  saved = p
+  emit()
+}
 
 export function update(fn: (d: Draft<Project>) => void, tag = '') {
   const next = produce(state, fn)
@@ -96,6 +104,7 @@ export const canRedo = () => future.length > 0
 
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 export const useProject = () => useSyncExternalStore(subscribe, getProject)
+export const useSaved = () => useSyncExternalStore(subscribe, () => state === saved)
 
 export function setTimeShape(days: string[], periods: Project['periods']) {
   update(d => {

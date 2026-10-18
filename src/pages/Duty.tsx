@@ -9,7 +9,8 @@ import { getLang, t } from '../i18n'
 import { colorVars, fileName, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
 import { removeTeacher, update, useProject } from '../store'
-import { download, Modal, toast } from '../ui'
+import { navigate } from '../nav'
+import { download, Empty, Modal, PageTitle, toast } from '../ui'
 import { loadOf } from '../timetable'
 import { xlsx } from '../xlsx'
 
@@ -119,7 +120,7 @@ export function DutyTeachersPage() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head">
-        <h2>{t('Teachers')} <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>({p.teachers.length})</span></h2>
+        <PageTitle title={t('Teachers')} count={p.teachers.length} sub={<>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')} {t('A teacher with a fixed place only gets duty at that place.')}</>} />
         <span className="hint">{t('Back-to-back duty')}:</span>
         <button className="btn small" onClick={() => update(d => { d.duty.consecutive = {} })}><Icon n="check" /> {t('Tick all')}</button>
         <button className="btn small" onClick={() => update(d => { d.duty.consecutive = Object.fromEntries(d.teachers.map(x => [x.id, false])) })}><Icon n="x" /> {t('Untick all')}</button>
@@ -136,7 +137,6 @@ export function DutyTeachersPage() {
       </div>
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
-          <p className="hint" style={{ margin: 12 }}>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')} {t('A teacher with a fixed place only gets duty at that place.')}</p>
           <table className="data">
             <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th>{p.duty.places.length > 0 && <th>{t('Fixed place')}</th>}<th className="num">{t('Lesson hours')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
@@ -206,7 +206,7 @@ export function DutyPlacesPage() {
   }
   return (
     <div className="stack" style={{ gap: 16 }}>
-      <div className="page-head"><h2>{t('Duty places')}</h2></div>
+      <div className="page-head"><PageTitle title={t('Duty places')} count={p.duty.places.length} sub={t('Where teachers stand duty, and how many teachers each place needs per day')} /></div>
       <div className="card pad row">
         <input placeholder={t('New duty place…')} value={name} style={{ flex: 1, maxWidth: 360 }} autoFocus
           onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
@@ -214,7 +214,7 @@ export function DutyPlacesPage() {
         <span className="hint">{t('e.g. Garden, Ground floor, 1st floor, Canteen')}</span>
       </div>
       <div className="card table-wrap">
-        {!p.duty.places.length ? <div className="empty">{t('Nothing here yet. Add the first one above.')}</div> : (
+        {!p.duty.places.length ? <Empty icon="door">{t('Nothing here yet. Add the first one above.')}</Empty> : (
           <table className="data">
             <thead><tr><th>{t('Name')}</th><th className="num">{t('Teachers per day')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
@@ -246,9 +246,8 @@ export function DutySpecialsPage() {
   const list = [...p.duty.specials].sort((a, b) => a.from.localeCompare(b.from))
   return (
     <div className="stack" style={{ gap: 16 }}>
-      <div className="page-head"><h2>{t('Special days')}</h2></div>
+      <div className="page-head"><PageTitle title={t('Special days')} count={list.length} sub={t('No duty is given on these days (holidays, bayram). In the Excel table the description is written struck through on those days.')} /></div>
       <div className="card pad stack">
-        <p className="hint" style={{ margin: 0 }}>{t('No duty is given on these days (holidays, bayram). In the Excel table the description is written struck through on those days.')}</p>
         <div className="row" style={{ alignItems: 'end' }}>
           <label className="field">{t('From')}<DateInput value={f.from} onChange={v => setF(x => ({ ...x, from: v }))} /></label>
           <label className="field">{t('To (optional)')}<DateInput value={f.to} onChange={v => setF(x => ({ ...x, to: v }))} /></label>
@@ -259,7 +258,7 @@ export function DutySpecialsPage() {
         </div>
       </div>
       <div className="card table-wrap">
-        {!list.length ? <div className="empty">{t('Nothing here yet. Add the first one above.')}</div> : (
+        {!list.length ? <Empty icon="calendar">{t('Nothing here yet. Add the first one above.')}</Empty> : (
           <table className="data">
             <thead><tr><th>{t('From')}</th><th>{t('To')}</th><th>{t('Description')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
@@ -327,8 +326,9 @@ function Signatures({ p, v }: { p: Project; v: ReturnType<typeof monthView> }) {
 }
 
 function Problem({ p }: { p: Project }) {
-  const msg = !p.duty.places.length ? t('Add duty places first.') : !p.teachers.some(x => roleOf(p, x.id) === 'duty') ? t('No teacher is marked "On duty".') : ''
-  return msg ? <div className="card empty">{msg}</div> : null
+  if (!p.duty.places.length) return <div className="card"><Empty icon="door" action={<button className="btn primary" onClick={() => navigate('duty-places')}>{t('Add duty places')} <Icon n="right" /></button>}>{t('Add duty places first.')}</Empty></div>
+  if (!p.teachers.some(x => roleOf(p, x.id) === 'duty')) return <div className="card"><Empty icon="teacher" action={<button className="btn primary" onClick={() => navigate('duty-teachers')}>{t('Go to Teachers')} <Icon n="right" /></button>}>{t('No teacher is marked "On duty".')}</Empty></div>
+  return null
 }
 
 export function DutyPlanPage() {
@@ -390,7 +390,7 @@ export function DutyPlanPage() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head">
-        <h2>{t('Distribute duties')}</h2>
+        <PageTitle title={t('Distribute duties')} sub={t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')} />
         <MonthPicker month={month} />
       </div>
       <Problem p={p} />
@@ -406,7 +406,6 @@ export function DutyPlanPage() {
               for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k]
             })
           }}><Icon n="trash" /> {t('Clear {m}', { m: (getLang() === 'tr' ? MONTHS_ACC : MONTHS)[Number(month.slice(5)) - 1] })}</button>
-          <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
         <div className="card pad row">
           <label className="row" style={{ gap: 6 }}>{t('Lesson load balance')}
@@ -431,9 +430,17 @@ export function DutyPlanPage() {
         {(runs.size > 0 || empty > 0 || uncovered.length > 0) && (
           <div className="card pad stack">
             {runs.size > 0 && <span><span className="badge warn">{runs.size}</span> {t('Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.')}</span>}
-            {uncovered.map(w => (
-              <span key={w.from}><span className="badge bad">{w.teachers.length}</span> {t('No duty in the week {from}–{to}: {names}. That week has fewer free places than teachers.', { from: trDate(w.from), to: trDate(w.to), names: w.teachers.map(id => teachers.get(id)?.name).join(', ') })}</span>
-            ))}
+            {uncovered.length > 0 && (
+              <details className="notice">
+                <summary>
+                  <span className="badge warn">{new Set(uncovered.flatMap(w => w.teachers)).size}</span> {t('{n} teachers have no duty in {w} weeks: those weeks have fewer free places than teachers.', { n: new Set(uncovered.flatMap(w => w.teachers)).size, w: uncovered.length })}
+                  <span className="more">{t('Details')}</span>
+                </summary>
+                <ul>
+                  {uncovered.map(w => <li key={w.from}><b>{trDate(w.from)}–{trDate(w.to)}</b> {w.teachers.map(id => teachers.get(id)?.name).join(', ')}</li>)}
+                </ul>
+              </details>
+            )}
             {empty > 0 && <span><span className="badge bad">{empty}</span> {t('Empty cells: no ticked teacher is free on that day. Tick more days on the Teachers tab or fill them by hand.')}</span>}
           </div>
         )}
@@ -495,7 +502,7 @@ export function DutyPrintPage() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head no-print">
-        <h2>{t('Print & share')}</h2>
+        <PageTitle title={t('Print & share')} sub={t("Print the month's duty roster or save it as Excel")} />
         <MonthPicker month={month} />
       </div>
       <div className="card pad row no-print">
@@ -506,7 +513,7 @@ export function DutyPrintPage() {
         <button className="btn" disabled={!ready} onClick={() => download(fileBase(p, month) + '.csv', buildCsv(p, month), 'text/csv')}><Icon n="download" /> {t('Excel (CSV)')}</button>
       </div>
       <div className="no-print"><Problem p={p} /></div>
-      {slots.length > 0 && v.duty.length > 0 && !hasPlan(p, month) && <div className="card empty no-print">{t('This month has not been distributed yet. Use Distribute duties first.')}</div>}
+      {slots.length > 0 && v.duty.length > 0 && !hasPlan(p, month) && <div className="card no-print"><Empty icon="zap" action={<button className="btn primary" onClick={() => navigate('duty-plan')}>{t('Go to Distribute duties')} <Icon n="right" /></button>}>{t('This month has not been distributed yet. Use Distribute duties first.')}</Empty></div>}
       {ready && (
         <div className="sheet"><div className="ts">
           <div className="ts-head"><h1>{title}</h1></div>

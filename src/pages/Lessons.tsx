@@ -4,7 +4,7 @@ import { t } from '../i18n'
 import { defaultSplit, lessonHours, newId, parseSplit, splitLabel, type ClassRef, type Lesson, type Project } from '../model'
 import { prunePlacements, update, useProject } from '../store'
 import { classLabel, loadOf, names } from '../timetable'
-import { ChipSelect, Modal, toast } from '../ui'
+import { ChipSelect, Empty, Modal, PageTitle, toast } from '../ui'
 
 type Filter = { kind: 'all' } | { kind: 'class' | 'teacher'; id: string }
 
@@ -78,10 +78,9 @@ export function LessonsPage() {
 
       <div className="stack" style={{ gap: 14, minWidth: 0 }}>
         <div className="page-head">
-          <h2>
-            {filter.kind === 'all' ? t('Lessons') : filter.kind === 'class' ? n.class.get(filter.id)?.name : n.teacher.get(filter.id)?.name}
-            <span className="hint" style={{ fontWeight: 400, fontSize: 14, marginLeft: 8 }}>{t('{n} lessons · {h} hours/week', { n: shown.length, h: total })}{filter.kind === 'class' ? ` / ${S}` : ''}</span>
-          </h2>
+          <PageTitle title={filter.kind === 'all' ? t('Lessons') : filter.kind === 'class' ? n.class.get(filter.id)?.name : n.teacher.get(filter.id)?.name}
+            count={<>{t('{n} lessons · {h} hours/week', { n: shown.length, h: total })}{filter.kind === 'class' ? ` / ${S}` : ''}</>}
+            sub={t('Which class takes which subject, with which teacher, how many hours')} />
           {filter.kind === 'class' && shown.length > 0 && <button className="btn" onClick={() => setCopyOf(shown)}>{t('Copy lessons to other classes…')}</button>}
         </div>
 
@@ -99,7 +98,7 @@ export function LessonsPage() {
         </div>
 
         <div className="card table-wrap">
-          {shown.length === 0 ? <div className="empty">{t('No lessons yet.')}</div> : (<>
+          {shown.length === 0 ? <Empty icon="puzzle">{t('No lessons yet.')}</Empty> : (<>
             <div className="row" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
               <label className="check"><input type="checkbox" checked={picked.length === shown.length} onChange={e => setSel(new Set(e.target.checked ? shown.map(l => l.id) : []))} />{t('Select all')}</label>
               <button className="btn small" disabled={!picked.length} onClick={() => setCopyOf(picked)}><Icon n="copy" /> {t('Copy')}</button>
@@ -116,7 +115,7 @@ export function LessonsPage() {
                       <td><input type="checkbox" aria-label={t('Select')} checked={sel.has(l.id)} onChange={e => toggle(l.id, e.target.checked)} /></td>
                       <td>{l.classes.map(c => classLabel(n, c, false)).join(', ')}</td>
                       <td><span className="chip"><span className="dot" style={{ background: s?.color }} />{s?.name ?? '?'}</span></td>
-                      <td>{l.teacherIds.map(x => n.teacher.get(x)?.name ?? '?').join(', ') || <span className="badge warn">{t('none')}</span>}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{l.teacherIds.map(x => n.teacher.get(x)?.name ?? '?').join(', ') || <span className="badge warn">{t('none')}</span>}</td>
                       {p.useRooms && <td>{l.roomIds.filter(x => n.room.has(x)).map(x => n.room.get(x)?.name).join(', ')}</td>}
                       <td className="num">{lessonHours(l)}</td>
                       <td>{splitLabel(l.split)}{l.sameDayOk && <span className="hint"> ({t('same day ok')})</span>}</td>

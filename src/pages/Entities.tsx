@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Icon } from '../icons'
+import { Icon, type IconName } from '../icons'
 import { t } from '../i18n'
 import { newId, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
-import { AvailabilityEditor, MiniGrid, Modal, toast } from '../ui'
+import { AvailabilityEditor, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
 
 export type EntityKey = 'subjects' | 'teachers' | 'rooms' | 'classes'
 
@@ -13,6 +13,13 @@ const TITLES: Record<EntityKey, [string, string]> = {
   teachers: ['Teachers', 'teacher'],
   rooms: ['Rooms', 'room'],
   classes: ['Classes', 'class'],
+}
+const ICONS: Record<EntityKey, IconName> = { subjects: 'book', teachers: 'teacher', rooms: 'door', classes: 'users' }
+const SUBS: Record<EntityKey, string> = {
+  subjects: 'What is taught',
+  teachers: 'Who teaches, and when they are at school',
+  rooms: 'Optional: labs, gyms and other special rooms',
+  classes: 'Classes and their groups',
 }
 const KIND: Partial<Record<EntityKey, Kind>> = { teachers: 'teacher', rooms: 'room', classes: 'class' }
 
@@ -128,7 +135,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
   return (
     <div className="stack" style={{ gap: 14 }}>
       <div className="page-head">
-        <h2>{t(title)} <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>({list.length})</span></h2>
+        <PageTitle title={t(title)} count={list.length} sub={t(SUBS[entity])} />
         <input placeholder={t('Search…')} value={q} onChange={e => setQ(e.target.value)} style={{ width: 200 }} />
         <button className="btn" onClick={() => setPaste(true)}>{t('Paste list')}</button>
       </div>
@@ -140,7 +147,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
       </div>
 
       <div className="card table-wrap">
-        {shown.length === 0 ? <div className="empty">{list.length ? t('No matches.') : t('Nothing here yet. Add the first one above.')}</div> : (
+        {shown.length === 0 ? <Empty icon={list.length ? 'x' : ICONS[entity]}>{list.length ? t('No matches.') : t('Nothing here yet. Add the first one above.')}</Empty> : (
           <table className="data">
             <thead>
               <tr>

@@ -6,7 +6,7 @@ import type { Issue, Progress, SolveResult } from '../solver/engine'
 import { evaluate } from '../solver/engine'
 import { defaultWorkers, runSolver, type RunHandle } from '../solver/runner'
 import { getProject, update, useProject } from '../store'
-import { toast } from '../ui'
+import { PageTitle, toast } from '../ui'
 
 const ISSUE_TEXT: Record<Issue['kind'], string> = {
   noSlot: 'No possible time slot (availabilities never overlap)',
@@ -85,8 +85,8 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
   const shown = result ?? current
 
   return (
-    <div className="stack" style={{ gap: 16, maxWidth: 1100 }}>
-      <div className="page-head"><h2>{t('Generate timetable')}</h2></div>
+    <div className="stack" style={{ gap: 16 }}>
+      <div className="page-head"><PageTitle title={t('Generate timetable')} sub={t('Distribute all lessons automatically')} /></div>
 
       <div className="card pad stack">
         <div className="stats">

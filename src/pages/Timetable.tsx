@@ -6,6 +6,7 @@ import { lessonOf, moveCard, setLocked, slotStatuses, swapCards, unplaceCard, ty
 import { undo, update, useProject } from '../store'
 import { buildIndex, cardLines, classLabel, entitiesOf, names, type CellCard, type Kind, type Names, type TTIndex } from '../timetable'
 import { MasterSheet } from './Sheets'
+import { PageTitle } from '../ui'
 
 const KINDS: [Kind, string][] = [['class', 'Classes'], ['teacher', 'Teachers'], ['room', 'Rooms']]
 
@@ -89,9 +90,9 @@ export function TimetablePage() {
     kind === 'all' ? true : k === 'class' ? u.lesson.classes.some(c => c.classId === id) : k === 'teacher' ? u.lesson.teacherIds.includes(id) : u.lesson.roomIds.includes(id))
 
   return (
-    <div className="stack" style={{ gap: 14 }}>
+    <div className="stack wide" style={{ gap: 14 }}>
       <div className="page-head">
-        <h2>{t('Timetable')}</h2>
+        <PageTitle title={t('Timetable')} sub={t('Check the timetable and adjust it by hand')} />
         <div className="btn-group">
           {KINDS.filter(([kk]) => kk !== 'room' || p.useRooms).map(([kk, label]) => <button key={kk} className={`btn ${kind === kk ? 'on' : ''}`} onClick={() => setKind(kk)}>{t(label)}</button>)}
           <button className={`btn ${kind === 'all' ? 'on' : ''}`} onClick={() => setKind('all')}>{t('Overview')}</button>

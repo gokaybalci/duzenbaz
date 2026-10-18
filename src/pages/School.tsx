@@ -3,7 +3,7 @@ import { Icon } from '../icons'
 import { DAY_NAMES, t, useLang } from '../i18n'
 import { addMandatorySubjects, SCHOOL_TYPES, type Period, type SchoolType } from '../model'
 import { setTimeShape, update, useProject } from '../store'
-import { AvailabilityEditor, toast } from '../ui'
+import { AvailabilityEditor, PageTitle, toast } from '../ui'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0) }
@@ -36,7 +36,7 @@ export function SchoolPage() {
 
   return (
     <div className="stack" style={{ gap: 16 }}>
-      <div className="page-head"><h2>{t('School & schedule')}</h2></div>
+      <div className="page-head"><PageTitle title={t('School & schedule')} sub={t('Days, lesson hours and times')} /></div>
       <div className="grid2">
         <div className="card pad stack">
           <h3>{t('School')}</h3>
