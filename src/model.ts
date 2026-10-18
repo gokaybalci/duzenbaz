@@ -102,8 +102,10 @@ export interface Duty {
   role: Record<string, DutyRole>
   days: Record<string, boolean[]>
   specials: SpecialDay[]
-  start: string
   month: string
+  assign: Record<string, Record<string, string>>
+  locked: Record<string, true>
+  manual: Record<string, Record<string, number>>
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
@@ -157,7 +159,7 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
-    duty: { places: [], role: {}, days: {}, specials: [], start: '', month: '' },
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {} },
   }
 }
 

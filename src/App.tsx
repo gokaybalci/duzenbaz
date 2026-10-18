@@ -3,7 +3,7 @@ import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
 import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
-import { DutyPlacesPage, DutyPlanPage, DutySpecialsPage, DutyTeachersPage } from './pages/Duty'
+import { DutyPlacesPage, DutyPlanPage, DutyPrintPage, DutySpecialsPage, DutyTeachersPage } from './pages/Duty'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
 import { LessonsPage } from './pages/Lessons'
@@ -17,7 +17,7 @@ import { canRedo, canUndo, getProject, redo, replaceProject, undo, useProject } 
 import { download, Menu, Modal, toast, ToastHost } from './ui'
 
 type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print' | DutyPage
-type DutyPage = 'duty-teachers' | 'duty-places' | 'duty-specials' | 'duty-plan'
+type DutyPage = 'duty-teachers' | 'duty-places' | 'duty-specials' | 'duty-plan' | 'duty-print'
 
 const NAV: [Page, IconName, string][] = [
   ['start', 'home', 'Start'],
@@ -37,6 +37,7 @@ const DUTY_NAV: [DutyPage, IconName, string][] = [
   ['duty-places', 'door', 'Duty places'],
   ['duty-specials', 'calendar', 'Special days'],
   ['duty-plan', 'zap', 'Distribute duties'],
+  ['duty-print', 'printer', 'Print & share'],
 ]
 const PAGES = new Set<string>([...NAV, ...DUTY_NAV].map(([id]) => id))
 
@@ -96,9 +97,6 @@ export default function App() {
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
         <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
-        <button className="nav-item module" onClick={() => setPage(dutyMode ? 'start' : 'duty-teachers')}>
-          <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
-        </button>
         {(dutyMode ? DUTY_NAV : NAV.filter(([id]) => id !== 'rooms' || p.useRooms)).map(([id, icon, label], i) => (
           <div key={id} style={{ display: 'contents' }}>
             {!dutyMode && (i === 2 || i === 7) && <div className="nav-sep" />}
@@ -108,6 +106,9 @@ export default function App() {
           </div>
         ))}
         <div className="spacer" />
+        <button className="nav-item module" onClick={() => setPage(dutyMode ? 'start' : 'duty-teachers')}>
+          <Icon n={dutyMode ? 'calendar' : 'shield'} />{t(dutyMode ? 'Timetable module' : 'Duty module')}
+        </button>
         <AppearanceMenu />
         <div className="row" style={{ padding: '0 6px' }}>
           <div className="btn-group">
@@ -145,6 +146,7 @@ export default function App() {
           {page === 'duty-places' && <DutyPlacesPage />}
           {page === 'duty-specials' && <DutySpecialsPage />}
           {page === 'duty-plan' && <DutyPlanPage />}
+          {page === 'duty-print' && <DutyPrintPage />}
         </main>
       </div>
       {newOpen && <NewProjectDialog onClose={() => setNewOpen(false)} onCreate={() => { setNewOpen(false); setPage('school') }} />}

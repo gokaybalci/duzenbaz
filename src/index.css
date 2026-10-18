@@ -255,5 +255,15 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .heat-low { background: #63be7b; }
 .heat-mid { background: #ffeb84; }
 .heat-high { background: #f8696b; }
-.nav-item.module { background: var(--accent); color: #fff; font-weight: 700; margin-bottom: 8px; }
+.nav-item.module { background: var(--accent); color: #fff; font-weight: 700; margin: 0 0 8px; }
 .nav-item.module:hover { background: var(--accent); filter: brightness(1.08); }
+.month-picker { display: flex; gap: 6px; align-items: center; }
+.month-picker select { font-size: 16px; font-weight: 600; padding: 6px 30px 6px 10px; }
+.month-picker .btn { font-size: 18px; padding: 4px 12px; }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
+button.link:hover { text-decoration: underline; }
+.duty-grid td { padding: 3px 6px; }
+.duty-grid td.locked select { border-color: var(--accent); background: var(--accent-soft); }
+.duty-grid td.clash select { border-color: var(--danger); background: var(--danger-soft); }
+.duty-grid tr.off td { background: var(--bg); color: var(--muted); }
+.duty-grid td.sp { color: var(--muted); }
