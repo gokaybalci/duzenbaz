@@ -181,9 +181,19 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
       for (let pp = 0; pp < last; pp++) { const s = d * P + pp; if (!grid[s].length && open(s)) blank.add(s) }
     }
   const st = statuses ?? hint
+  const alone = (s: number, cid: string) => grid[s]?.length === 1 && grid[s][0].cardId === cid
+  const spanAt = new Map<number, number>(), covered = new Set<number>()
+  grid.forEach((cards, s) => {
+    const c = cards[0]
+    if (cards.length !== 1 || c.offset !== 0 || c.len < 2) return
+    const run = Array.from({ length: c.len }, (_, k) => s + k)
+    if (!run.every(x => Math.floor(x / P) === Math.floor(s / P) && alone(x, c.cardId))) return
+    spanAt.set(s, c.len)
+    run.slice(1).forEach(x => covered.add(x))
+  })
 
   return (
-    <table className="tt">
+    <table className={`tt ${dragId ? 'is-dragging' : ''}`}>
       <thead>
         <tr><th className="ph">{ent.short}</th>{p.days.map((d, i) => <th key={i}>{d}</th>)}</tr>
       </thead>
@@ -203,8 +213,12 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
               }
               return (
                 <td key={di} className={cls} data-slot={s} title={blank.has(s) ? t('Blank period in class schedule') : undefined} onClick={() => { if (!cards.length) onCellClick(s) }}>
-                  {cards.map(c => <Card key={c.cardId} c={c} n={n} kind={kind} viewer={id} clash={!!idx.clashSlots.get(c.cardId)?.has(s)}
-                    dragging={dragId === c.cardId} selected={selected === c.cardId} startDrag={startDrag} />)}
+                  {!covered.has(s) && cards.map(c => {
+                    const span = spanAt.get(s) ?? 1
+                    const clash = Array.from({ length: span }, (_, k) => s + k).some(x => idx.clashSlots.get(c.cardId)?.has(x))
+                    return <Card key={c.cardId} c={c} n={n} kind={kind} viewer={id} span={span} clash={clash}
+                      dragging={dragId === c.cardId} selected={selected === c.cardId} startDrag={startDrag} />
+                  })}
                 </td>
               )
             })}
@@ -215,17 +229,18 @@ function Grid({ p, idx, n, kind, id, statuses, dragId, over, selected, startDrag
   )
 }
 
-function Card({ c, n, kind, viewer, clash, dragging, selected, startDrag }: {
-  c: CellCard; n: Names; kind: Kind; viewer: string; clash: boolean; dragging: boolean; selected: boolean
+function Card({ c, n, kind, viewer, span, clash, dragging, selected, startDrag }: {
+  c: CellCard; n: Names; kind: Kind; viewer: string; span: number; clash: boolean; dragging: boolean; selected: boolean
   startDrag: (e: React.PointerEvent, cid: string, title: string, color: string) => void
 }) {
   const cl = cardLines(n, c.lesson, kind, kind !== 'class', viewer)
   return (
-    <div className={`tcard ${c.offset ? 'cont' : ''} ${clash ? 'clash' : ''} ${dragging ? 'dragging' : ''} ${selected ? 'selected' : ''}`}
-      style={colorVars(cl.color, 0.14) as React.CSSProperties}
+    <div className={`tcard ${span > 1 ? 'span' : ''} ${c.offset ? 'cont' : ''} ${clash ? 'clash' : ''} ${dragging ? 'dragging' : ''} ${selected ? 'selected' : ''}`}
+      style={{ ...colorVars(cl.color, 0.14), '--span': span } as React.CSSProperties}
       onPointerDown={e => startDrag(e, c.cardId, cl.title, cl.color)} title={[cl.title, ...cl.lines].join('\n')}>
       {c.locked && <span className="lock"><Icon n="lock" size={10} /></span>}
       <b>{cl.title}</b>
+      {span > 1 && <em>{span} {t('h')}</em>}
       {cl.lines.map((x, i) => <span key={i}>{x}</span>)}
     </div>
   )
