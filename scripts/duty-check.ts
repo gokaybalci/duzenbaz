@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, weekdayOf } from '../src/duty'
+import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
@@ -82,11 +82,15 @@ fillMonth(q, '2026-11')
 const qc = dutyCounts(q, '2026-11-30')
 assert.deepEqual(q.teachers.map(t => qc.get(t.id)!.total), [7, 7, 7, 7, 7, 7], 'a short-staffed weekday no longer leaves some teachers with 8 and others with 6')
 
+assert.deepEqual(uncoveredWeeks(q, '2026-11'), [], 'every teacher has at least one duty every week')
 for (const t of q.teachers) q.duty.consecutive[t.id] = false
 q.duty.specials = [{ id: 'h', from: '2026-11-16', to: '2026-11-20', name: 'Ara Tatil' }]
 fillMonth(q, '2026-11')
 for (const d of monthDates('2026-11')) if (weekdayOf(d) < 5 && (d < '2026-11-16' || d > '2026-11-20'))
   assert.equal(Object.keys(q.duty.assign[d] ?? {}).length, 2, `${d}: every place is filled even when back-to-back duty is off for everyone`)
+assert.deepEqual(uncoveredWeeks(q, '2026-11'), [], 'still a duty every week with back-to-back off and a holiday week')
+fillMonth(q, '2026-12')
+assert.deepEqual([...uncoveredWeeks(q, '2026-11'), ...uncoveredWeeks(q, '2026-12')], [], 'a week split over two months is covered once both are distributed')
 
 assert.ok(!monthView(p, '2026-12').duty.some(x => x.id === t6.id), 'Nöbet tutmaz teachers are left out of the counters')
 const gone = full[1], lessonsBefore = p.lessons.length
@@ -97,6 +101,9 @@ assert.ok(!p.teachers.some(x => x.id === gone) && !p.lessons.some(l => l.teacher
 assert.ok(!Object.values(p.duty.assign).some(row => Object.values(row).includes(gone)), 'and from the duty plan')
 assert.ok(!goneKey || !p.duty.locked[`2026-12-01|${goneKey}`], 'and from the locks')
 assert.equal(p.lessons.length, lessonsBefore, 'lessons stay, only the teacher leaves them')
+
+const many = uncoveredWeeks(p, '2026-11')
+assert.ok(many.length > 0 && many.every(w => w.teachers.length <= full.length + 4 - 20), 'with more teachers than weekly places, only the unavoidable few miss a week, and they are reported')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

@@ -275,3 +275,6 @@ button.link:hover { text-decoration: underline; }
 .pref-days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pref-days button:disabled { opacity: .3; cursor: default; }
 .duty-tt .tcard.run { box-shadow: inset 0 0 0 2px var(--warn); }
+.module-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.module-row .nav-item.module { margin: 0; flex: 1; }
+.module-row .nav-item.module.save { flex: 0 0 40px; justify-content: center; padding: 0; }

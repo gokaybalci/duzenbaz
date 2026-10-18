@@ -19,6 +19,7 @@ export const tr: Record<string, string> = {
   'Redo': 'Yinele',
   'Untitled school': 'Adsız okul',
   'New project': 'Yeni proje',
+  'No duty in the week {from}–{to}: {names}. That week has fewer free places than teachers.': '{from}–{to} haftasında nöbeti olmayan: {names}. O hafta boş yer öğretmenden az.',
   'Lock every duty': 'Hepsini sabitle',
   'Clear month': 'Ayı temizle',
   'Clear all duties of {m}, including locked ones?': '{m} ayının tüm nöbetleri, sabitlenenler dahil, silinsin mi?',

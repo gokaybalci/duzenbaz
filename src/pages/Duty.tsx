@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   DUTY_ROLES, MONTHS, allowsRun, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
-  roleOf, schoolDays, schoolYear, shiftMonth, trDate, validDate,
+  roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
 import { t } from '../i18n'
@@ -303,6 +303,7 @@ export function DutyPlanPage() {
   const teachers = new Map(p.teachers.map(x => [x.id, x]))
   const locks = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
   const filled = v.rows.reduce((n, d) => n + Object.keys(d.row).length, 0) > locks
+  const uncovered = useMemo(() => uncoveredWeeks(p, month), [p, month])
   const runs = new Set<string>()
   let empty = 0
   for (const d of v.rows) {
@@ -346,9 +347,12 @@ export function DutyPlanPage() {
           }}><Icon n="trash" /> {t('Clear month')}</button>
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
-        {(runs.size > 0 || empty > 0) && (
+        {(runs.size > 0 || empty > 0 || uncovered.length > 0) && (
           <div className="card pad stack">
             {runs.size > 0 && <span><span className="badge warn">{runs.size}</span> {t('Back-to-back duty could not be avoided here: no other teacher was free on those days. These cards have a yellow frame.')}</span>}
+            {uncovered.map(w => (
+              <span key={w.from}><span className="badge bad">{w.teachers.length}</span> {t('No duty in the week {from}–{to}: {names}. That week has fewer free places than teachers.', { from: trDate(w.from), to: trDate(w.to), names: w.teachers.map(id => teachers.get(id)?.name).join(', ') })}</span>
+            ))}
             {empty > 0 && <span><span className="badge bad">{empty}</span> {t('Empty cells: no ticked teacher is free on that day. Tick more days on the Teachers tab or fill them by hand.')}</span>}
           </div>
         )}
