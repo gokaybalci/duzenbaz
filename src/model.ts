@@ -79,6 +79,20 @@ export interface Project {
   strictClasses: boolean
   useRooms: boolean
   schoolType: SchoolType
+  duty: Duty
+}
+
+export interface DutyPlace {
+  id: string
+  name: string
+  count: number
+}
+
+export interface Duty {
+  places: DutyPlace[]
+  day: Record<string, number>
+  weeks: number
+  start: string
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
@@ -132,6 +146,7 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
+    duty: { places: [], day: {}, weeks: 18, start: '' },
   }
 }
 

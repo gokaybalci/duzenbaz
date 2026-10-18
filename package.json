@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "bench": "tsx scripts/bench.ts",
+    "check:duty": "tsx scripts/duty-check.ts",
     "check:subjects": "tsx scripts/subjects-check.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "desktop:dev": "tauri dev"

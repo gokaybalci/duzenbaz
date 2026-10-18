@@ -3,6 +3,7 @@ import { Icon, type IconName } from './icons'
 import { demoProject, demoTeacherRange } from './demo'
 import { DAY_NAMES, setLang, t, useLang } from './i18n'
 import { addMandatorySubjects, emptyProject, SCHOOL_TYPES, type Project, type SchoolType } from './model'
+import { DutyPage } from './pages/Duty'
 import { EntitiesPage, type EntityKey } from './pages/Entities'
 import { GeneratePage } from './pages/Generate'
 import { LessonsPage } from './pages/Lessons'
@@ -15,7 +16,7 @@ import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme
 import { canRedo, canUndo, getProject, redo, replaceProject, undo, useProject } from './store'
 import { download, Menu, Modal, toast, ToastHost } from './ui'
 
-type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print'
+type Page = 'start' | 'school' | EntityKey | 'lessons' | 'generate' | 'timetable' | 'print' | 'duty'
 
 const NAV: [Page, IconName, string][] = [
   ['start', 'home', 'Start'],
@@ -28,6 +29,7 @@ const NAV: [Page, IconName, string][] = [
   ['generate', 'zap', 'Generate'],
   ['timetable', 'calendar', 'Timetable'],
   ['print', 'printer', 'Print & share'],
+  ['duty', 'shield', 'Duty roster'],
 ]
 
 export default function App() {
@@ -87,7 +89,7 @@ export default function App() {
         <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
         {NAV.filter(([id]) => id !== 'rooms' || p.useRooms).map(([id, icon, label], i) => (
           <div key={id} style={{ display: 'contents' }}>
-            {(i === 2 || i === 7) && <div className="nav-sep" />}
+            {(i === 2 || i === 7 || id === 'duty') && <div className="nav-sep" />}
             <button className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>
               <Icon n={icon} />{t(label)}{counts[id] !== undefined && <span className="count">{counts[id]}</span>}
             </button>
@@ -127,6 +129,7 @@ export default function App() {
           {page === 'generate' && <GeneratePage goTo={pg => setPage(pg as Page)} />}
           {page === 'timetable' && <TimetablePage />}
           {page === 'print' && <PrintPage />}
+          {page === 'duty' && <DutyPage />}
         </main>
       </div>
       {newOpen && <NewProjectDialog onClose={() => setNewOpen(false)} onCreate={() => { setNewOpen(false); setPage('school') }} />}
