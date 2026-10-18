@@ -7,3 +7,4 @@ src-tauri/target/
 .idea/
 .DS_Store
 notlar
+.claude/
