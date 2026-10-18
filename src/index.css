@@ -262,8 +262,11 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .month-picker .btn { font-size: 18px; padding: 4px 12px; }
 button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
 button.link:hover { text-decoration: underline; }
-.duty-grid td { padding: 3px 6px; }
-.duty-grid td.locked select { border-color: var(--accent); background: var(--accent-soft); }
-.duty-grid td.clash select { border-color: var(--danger); background: var(--danger-soft); }
-.duty-grid tr.off td { background: var(--bg); color: var(--muted); }
-.duty-grid td.sp { color: var(--muted); }
+.duty-tt th.ph { width: 104px; }
+.duty-tt td { height: 44px; }
+.duty-tt td.sp { text-align: center; vertical-align: middle; color: var(--muted); }
+.duty-tt .tcard { cursor: pointer; }
+.duty-tt .tcard.none { border-left-color: var(--line-strong); }
+.duty-tt .tcard select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.duty-tt .tcard .lock { z-index: 1; background: none; border: 0; padding: 1px; color: var(--muted); cursor: pointer; line-height: 0; }
+.duty-tt .tcard .lock:hover { color: var(--text); }

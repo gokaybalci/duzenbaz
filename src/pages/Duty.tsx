@@ -5,7 +5,7 @@ import {
 } from '../duty'
 import { Icon } from '../icons'
 import { t } from '../i18n'
-import { newId, pickColor, upperName, type DutyRole, type Project } from '../model'
+import { colorVars, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
 import { native } from '../native'
 import { update, useProject } from '../store'
 import { download, Modal, toast } from '../ui'
@@ -273,6 +273,7 @@ export function DutyPlanPage() {
   const places = new Map(p.duty.places.map(x => [x.id, x.name]))
   const days = useMemo(() => dutyDays(p), [p])
   const duty = v.duty
+  const teachers = new Map(p.teachers.map(x => [x.id, x]))
   const locks = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
 
   const setCell = (date: string, key: string, tid: string) => update(d => {
@@ -300,29 +301,31 @@ export function DutyPlanPage() {
           <span className="hint" style={{ flex: 1 }}>{t('Change any cell by picking a teacher; changed cells are locked and Distribute leaves them as they are. Counters continue from the months before.')}</span>
         </div>
         <div className="card table-wrap">
-          <table className="data duty-grid">
-            <thead><tr><th>{t('Date')}</th>{slots.map(s => <th key={s.key}>{places.get(s.place)}</th>)}</tr></thead>
+          <table className="tt duty-tt">
+            <thead><tr><th className="ph">{t('Date')}</th>{slots.map(s => <th key={s.key}>{places.get(s.place)}</th>)}</tr></thead>
             <tbody>
               {v.rows.map(d => {
                 const filled = Object.keys(d.row).length > 0
                 const off = !d.special && !filled && !duty.some(x => days.get(x.id)![d.weekday])
                 const ids = Object.values(d.row), twice = new Set(ids.filter((x, i) => ids.indexOf(x) !== i))
                 return (
-                  <tr key={d.date} className={off || (d.special && !filled) ? 'off' : ''}>
-                    <td className="dd">{trDate(d.date)} <span className="hint">{WEEKDAYS[d.weekday]}</span></td>
-                    {d.special && !filled ? <td colSpan={slots.length} className="sp"><s>{d.special}</s></td>
-                      : off ? <td colSpan={slots.length} />
+                  <tr key={d.date}>
+                    <th className="ph">{trDate(d.date)}<small>{WEEKDAYS[d.weekday]}</small></th>
+                    {d.special && !filled ? <td colSpan={slots.length} className="closed sp"><s>{d.special}</s></td>
+                      : off ? <td colSpan={slots.length} className="closed" />
                         : slots.map(s => {
-                          const cur = d.row[s.key] ?? '', locked = !!p.duty.locked[`${d.date}|${s.key}`]
+                          const cur = d.row[s.key] ?? '', locked = !!p.duty.locked[`${d.date}|${s.key}`], te = teachers.get(cur)
                           const options = duty.filter(x => days.get(x.id)![d.weekday] || x.id === cur)
                           return (
-                            <td key={s.key} className={`${locked ? 'locked' : ''} ${twice.has(cur) ? 'clash' : ''}`}>
-                              <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+                            <td key={s.key}>
+                              <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
+                                <b>{te?.name ?? '—'}</b>
+                                <span>{places.get(s.place)}{cur ? ` · ${v.counts.get(cur)?.total ?? 0}` : ''}</span>
                                 <select value={cur} onChange={e => setCell(d.date, s.key, e.target.value)} aria-label={`${trDate(d.date)} ${places.get(s.place)}`}>
                                   <option value="">—</option>
                                   {options.map(x => <option key={x.id} value={x.id}>{x.name} ({v.counts.get(x.id)!.total})</option>)}
                                 </select>
-                                {cur && <button className="btn ghost small icon" title={locked ? t('Unlock') : t('Lock')} onClick={() => toggleLock(d.date, s.key)}><Icon n={locked ? 'lock' : 'unlock'} size={14} /></button>}
+                                {cur && <button className="lock" title={locked ? t('Unlock') : t('Lock')} onClick={() => toggleLock(d.date, s.key)}><Icon n={locked ? 'lock' : 'unlock'} size={12} /></button>}
                               </div>
                             </td>
                           )

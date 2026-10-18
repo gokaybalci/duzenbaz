@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, fillMonth, monthDates, schoolDays, weekdayOf } from '../src/duty'
+import { dutyCounts, dutyDays, fillMonth, monthDates, monthView, schoolDays, weekdayOf } from '../src/duty'
 import { migrate } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
 
@@ -39,7 +39,7 @@ const c = dutyCounts(p, '2026-12-31')
 const full = p.teachers.filter(t => ![t0, t2, t3, t4].includes(t)).map(t => t.id)
 const spread = (f: (id: string) => number) => Math.max(...full.map(f)) - Math.min(...full.map(f))
 for (const pl of p.duty.places) assert.ok(spread(id => c.get(id)!.places[pl.id] ?? 0) <= 1, `${pl.name}: places differ by at most one`)
-assert.ok(spread(id => c.get(id)!.total) <= 2, 'totals differ by at most two')
+assert.ok(spread(id => c.get(id)!.total) <= 1, 'totals differ by at most one')
 const avg = full.reduce((a, id) => a + c.get(id)!.total, 0) / full.length
 assert.ok(Math.abs(c.get(t4.id)!.total - avg) <= 2, 'hand-entered earlier months count towards the total')
 
@@ -49,6 +49,19 @@ p.duty.locked[`${date}|${key}`] = true
 fillMonth(p, '2026-11')
 assert.equal(p.duty.assign[date][key], other, 'locked cells survive a new distribution')
 assert.equal(new Set(Object.values(p.duty.assign[date])).size, 4, 'and nobody is doubled next to them')
+
+const dec = monthView(p, '2026-12')
+const decCells = monthDates('2026-12').reduce((n, d) => n + Object.keys(p.duty.assign[d] ?? {}).length, 0)
+assert.equal([...dec.counts.values()].reduce((n, c) => n + c.total, 0), decCells, 'counters show only the chosen month')
+
+const q = migrate({ ...demoProject({ classes: 4 }) })
+q.teachers = q.teachers.slice(0, 6)
+const pattern = [[1, 1, 0, 0, 1], [1, 1, 1, 1, 1], [1, 0, 0, 0, 1], [1, 1, 1, 1, 1], [0, 0, 1, 1, 1], [1, 1, 1, 0, 0]]
+q.teachers.forEach((t, i) => { q.duty.days[t.id] = [...pattern[i].map(Boolean), false, false] })
+q.duty.places = [{ id: 'a', name: 'BAHÇE', count: 1 }, { id: 'b', name: 'BİNA', count: 1 }]
+fillMonth(q, '2026-11')
+const qc = dutyCounts(q, '2026-11-30')
+assert.deepEqual(q.teachers.map(t => qc.get(t.id)!.total), [7, 7, 7, 7, 7, 7], 'a short-staffed weekday no longer leaves some teachers with 8 and others with 6')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

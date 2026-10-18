@@ -65,10 +65,10 @@ export const hasPlan = (p: Project, month: string) => Object.keys(p.duty.assign)
 
 export interface Count { places: Record<string, number>; total: number }
 
-export function dutyCounts(p: Project, until: string): Map<string, Count> {
+export function dutyCounts(p: Project, until: string, from = ''): Map<string, Count> {
   const out = new Map(p.teachers.map(t => [t.id, { places: {}, total: 0 } as Count]))
   for (const [date, row] of Object.entries(p.duty.assign)) {
-    if (date > until) continue
+    if (date > until || date < from) continue
     for (const [key, t] of Object.entries(row)) {
       const c = out.get(t)
       if (!c) continue
@@ -80,7 +80,7 @@ export function dutyCounts(p: Project, until: string): Map<string, Count> {
   for (const [t, months] of Object.entries(p.duty.manual))
     for (const [m, n] of Object.entries(months)) {
       const c = out.get(t)
-      if (c && m <= until.slice(0, 7) && !hasPlan(p, m)) c.total += n
+      if (c && m <= until.slice(0, 7) && m >= from.slice(0, 7) && !hasPlan(p, m)) c.total += n
     }
   return out
 }
@@ -108,6 +108,7 @@ export function fillMonth(p: Project, month: string) {
     const l = last.get(t)
     return ((at.get(t)![place] ?? 0) / per.get(place)!) * 3 + total.get(t)! + (l && between(l, date) <= 1 ? 0.5 : 0)
   }
+  const rows = new Map<string, Record<string, string>>()
   for (const date of dates) {
     const old = p.duty.assign[date] ?? {}
     const row: Record<string, string> = {}
@@ -149,6 +150,84 @@ export function fillMonth(p: Project, month: string) {
       at.get(t)![pl] = (at.get(t)![pl] ?? 0) + 1
       last.set(t, date)
     }
+    rows.set(date, row)
+  }
+
+  const free = (date: string, key: string) => !p.duty.locked[`${date}|${key}`]
+  const place = (key: string) => key.split('#')[0]
+  for (let moved = true; moved;) {
+    moved = false
+    for (const src of [...pool].sort((a, b) => total.get(b)! - total.get(a)!)) {
+      const prev = new Map<string, { from: string; date: string; key: string }>()
+      const seen = new Set([src]), queue = [src]
+      let goal = ''
+      while (queue.length && !goal) {
+        const x = queue.shift()!
+        for (const [date, row] of rows) {
+          const onDay = new Set(Object.values(row)), wd = weekdayOf(date)
+          for (const [key, owner] of Object.entries(row)) {
+            if (owner !== x || !free(date, key)) continue
+            for (const y of pool) {
+              if (seen.has(y) || onDay.has(y) || !days.get(y)![wd]) continue
+              seen.add(y)
+              prev.set(y, { from: x, date, key })
+              queue.push(y)
+              if (total.get(y)! <= total.get(src)! - 2) { goal = y; break }
+            }
+            if (goal) break
+          }
+          if (goal) break
+        }
+      }
+      if (!goal) continue
+      for (let y = goal; y !== src;) {
+        const e = prev.get(y)!, pl = place(e.key)
+        rows.get(e.date)![e.key] = y
+        at.get(e.from)![pl]--
+        at.get(y)![pl] = (at.get(y)![pl] ?? 0) + 1
+        y = e.from
+      }
+      total.set(src, total.get(src)! - 1)
+      total.set(goal, total.get(goal)! + 1)
+      moved = true
+      break
+    }
+  }
+
+  const share = (t: string, pl: string) => (at.get(t)?.[pl] ?? 0) / per.get(pl)!
+  for (let better = true; better;) {
+    better = false
+    for (const [date, row] of rows) {
+      const keys = Object.keys(row).filter(k => free(date, k) && total.has(row[k]))
+      for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+        const a = row[keys[i]], b = row[keys[j]], pa = place(keys[i]), pb = place(keys[j])
+        if (pa === pb) continue
+        const now = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+        at.get(a)![pa]--; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + 1; at.get(b)![pb]--; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + 1
+        const after = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+        if (after < now - 1e-9) { row[keys[i]] = b; row[keys[j]] = a; better = true }
+        else { at.get(a)![pa]++; at.get(a)![pb]--; at.get(b)![pb]++; at.get(b)![pa]-- }
+      }
+    }
+  }
+
+  const cells = [...rows].flatMap(([date, row]) => Object.keys(row).filter(k => free(date, k) && total.has(row[k])).map(key => ({ date, key })))
+  for (let better = true; better;) {
+    better = false
+    for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) {
+      const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
+      const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
+      if (c1.date === c2.date || pa === pb || a === b) continue
+      if (Object.values(r1).includes(b) || Object.values(r2).includes(a) || !days.get(b)![weekdayOf(c1.date)] || !days.get(a)![weekdayOf(c2.date)]) continue
+      const now = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+      at.get(a)![pa]--; at.get(a)![pb] = (at.get(a)![pb] ?? 0) + 1; at.get(b)![pb]--; at.get(b)![pa] = (at.get(b)![pa] ?? 0) + 1
+      const after = share(a, pa) ** 2 + share(b, pb) ** 2 + share(a, pb) ** 2 + share(b, pa) ** 2
+      if (after < now - 1e-9) { r1[c1.key] = b; r2[c2.key] = a; better = true }
+      else { at.get(a)![pa]++; at.get(a)![pb]--; at.get(b)![pb]++; at.get(b)![pa]-- }
+    }
+  }
+
+  for (const [date, row] of rows) {
     if (Object.keys(row).length) p.duty.assign[date] = row
     else delete p.duty.assign[date]
   }
@@ -162,7 +241,7 @@ export const trDate = (iso: string) => iso.split('-').reverse().join('.')
 
 export function monthView(p: Project, month: string) {
   const dates = monthDates(month)
-  const counts = dutyCounts(p, dates[dates.length - 1])
+  const counts = dutyCounts(p, dates[dates.length - 1], dates[0])
   const duty = p.teachers.filter(t => roleOf(p, t.id) === 'duty')
   const rows = dates.map(date => ({ date, weekday: weekdayOf(date), special: specialOn(p, date)?.name, row: p.duty.assign[date] ?? {} }))
   const totals = duty.map(t => counts.get(t.id)!.total)
