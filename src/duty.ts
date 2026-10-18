@@ -139,7 +139,10 @@ export function fillMonth(p: Project, month: string) {
   const total = new Map(pool.map(t => [t, 0]))
   const at = new Map(pool.map(t => [t, {} as Record<string, number>]))
   const free = (date: string, key: string) => !p.duty.locked[`${date}|${key}`]
-  const place = (key: string) => key.split('#')[0]
+  const memo = <T,>(f: (k: string) => T) => { const m = new Map<string, T>(); return (k: string) => { let v = m.get(k); if (v === undefined) m.set(k, (v = f(k))); return v } }
+  const place = memo(key => key.split('#')[0])
+  const around = memo(date => [shiftDate(date, -1), shiftDate(date, 1)])
+  const weekDays = memo(w => Array.from({ length: 7 }, (_, i) => shiftDate(w, i)))
   const rows = new Map<string, Record<string, string>>()
   for (const date of dates) {
     const old = p.duty.assign[date] ?? {}, row: Record<string, string> = {}
@@ -148,24 +151,27 @@ export function fillMonth(p: Project, month: string) {
   }
   const rowOf = (date: string) => rows.get(date) ?? p.duty.assign[date] ?? {}
   const near = (t: string, date: string, except = '') =>
-    !allowsRun(p, t) && [shiftDate(date, -1), shiftDate(date, 1)].some(d => d !== except && Object.values(rowOf(d)).includes(t))
+    !allowsRun(p, t) && around(date).some(d => d !== except && Object.values(rowOf(d)).includes(t))
   const can = (t: string, date: string, except = '') => days.get(t)![weekdayOf(date)] && !near(t, date, except)
   const there = (t: string, date: string) => days.get(t)![weekdayOf(date)]
   const likes = (t: string, date: string) => prefersDay(p, t, weekdayOf(date), days)
-  const weekOf = (date: string) => shiftDate(date, -weekdayOf(date))
+  const weekOf = memo(date => shiftDate(date, -weekdayOf(date)))
   const wk = new Map<string, Map<string, number>>()
   const wcount = (t: string, w: string) => wk.get(w)?.get(t) ?? 0
   const repeats = (t: string, w: string, skip = '') => {
     const seen = new Set<string>()
     let n = 0
     for (let i = 0; i < 7; i++) {
-      const d = shiftDate(w, i)
-      if (d !== skip) for (const [key, x] of Object.entries(rowOf(d))) if (x === t) { const pl = place(key); if (seen.has(pl)) n++; else seen.add(pl) }
+      const d = weekDays(w)[i]
+      if (d === skip) continue
+      const row = rowOf(d)
+      for (const key in row) if (row[key] === t) { const pl = place(key); if (seen.has(pl)) n++; else seen.add(pl) }
     }
     return n
   }
   const sameWeekPlace = (t: string, pl: string, date: string) =>
-    Array.from({ length: 7 }, (_, i) => shiftDate(weekOf(date), i)).some(d => d !== date && Object.entries(rowOf(d)).some(([key, x]) => x === t && place(key) === pl))
+    weekDays(weekOf(date)).some(d => { if (d === date) return false; const row = rowOf(d); for (const key in row) if (row[key] === t && place(key) === pl) return true; return false })
+  const holds = (row: Record<string, string>, t: string) => { for (const key in row) if (row[key] === t) return true; return false }
   const wadd = (t: string, w: string, n: number) => { let m = wk.get(w); if (!m) wk.set(w, (m = new Map())); m.set(t, (m.get(t) ?? 0) + n) }
   for (let d = weekOf(dates[0]); d <= shiftDate(weekOf(dates[dates.length - 1]), 6); d = shiftDate(d, 1))
     if (!rows.has(d)) for (const t of Object.values(p.duty.assign[d] ?? {})) wadd(t, weekOf(d), 1)
@@ -185,8 +191,8 @@ export function fillMonth(p: Project, month: string) {
       const pick: (string | null)[] = open.map(() => null)
       const bench = pool.filter(t => !used.has(t) && there(t, date))
       open.forEach((s, i) => {
-        let best = -1
-        bench.forEach((t, j) => { if (fits(t, s.place) && (best < 0 || cost(t, s.place, date) < cost(bench[best], s.place, date))) best = j })
+        let best = -1, bestCost = 0
+        bench.forEach((t, j) => { if (!fits(t, s.place)) return; const c = cost(t, s.place, date); if (best < 0 || c < bestCost) { best = j; bestCost = c } })
         if (best >= 0) pick[i] = bench.splice(best, 1)[0]
       })
       for (let better = true; better;) {
@@ -267,9 +273,10 @@ export function fillMonth(p: Project, month: string) {
       while (queue.length && !goal) {
         const x = queue.shift()!
         for (const [date, row] of rows) {
-          const onDay = new Set(Object.values(row))
-          for (const [key, owner] of Object.entries(row)) {
-            if (owner !== x || !free(date, key)) continue
+          let onDay: Set<string> | undefined
+          for (const key in row) {
+            if (row[key] !== x || !free(date, key)) continue
+            onDay ??= new Set(Object.values(row))
             const w = weekOf(date), lone = wcount(x, w) < 2
             for (const y of pool) {
               if (seen.has(y) || onDay.has(y) || !can(y, date) || !fits(y, place(key)) || (lone && wcount(y, w) > 0)) continue
@@ -330,7 +337,7 @@ export function fillMonth(p: Project, month: string) {
     for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) {
       const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
       const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
-      if (c1.date === c2.date || a === b || Object.values(r1).includes(b) || Object.values(r2).includes(a)) continue
+      if (c1.date === c2.date || a === b || holds(r1, b) || holds(r2, a)) continue
       if (!there(b, c1.date) || !there(a, c2.date) || !fits(b, pa) || !fits(a, pb)) continue
       const w1 = weekOf(c1.date), w2 = weekOf(c2.date)
       if (w1 !== w2 && ((wcount(a, w1) < 2 && wcount(b, w1) > 0) || (wcount(b, w2) < 2 && wcount(a, w2) > 0))) continue
