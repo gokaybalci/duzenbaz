@@ -377,7 +377,7 @@ export const tr: Record<string, string> = {
   'NOTIFIED TO': 'TEBLİĞ EDİLENLER',
   'Signature': 'İmza',
   'Vice principal': 'Müdür Yardımcısı',
-  'Export dated copy': 'Tarihli kopya dışa aktar',
+  'Back up as ZIP': 'ZIP olarak yedekle',
   'The lessons changed while generating, so the result was discarded. Generate again.': 'Dağıtım sırasında dersler değişti, bu yüzden sonuç kullanılmadı. Yeniden dağıtın.',
   'Module': 'Modül',
   'Duty': 'Nöbet',

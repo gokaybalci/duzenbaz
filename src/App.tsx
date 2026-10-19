@@ -12,6 +12,7 @@ import { SchoolPage } from './pages/School'
 import { SHEET_CSS } from './pages/Sheets'
 import { TimetablePage } from './pages/Timetable'
 import { native } from './native'
+import { zip } from './xlsx'
 import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
 import { canRedo, canUndo, getProject, markSaved, redo, replaceProject, undo, useProject, useSaved } from './store'
 import { setNavigator } from './nav'
@@ -103,7 +104,7 @@ export default function App() {
     <div className="app">
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
-        <div className="brand"><img className="logo" src="/logo.svg" alt="" />{t('Düzenbaz')}</div>
+        <div className="brand"><span className="logo-wrap" data-tip="Gökay"><img className="logo" src="/logo.svg" alt="" /></span>{t('Düzenbaz')}</div>
         <div className="mod-switch" role="group" aria-label={t('Module')}>
           <button className={dutyMode ? '' : 'on'} aria-pressed={!dutyMode} onClick={() => dutyMode && setPage(lastOf.current.tt)}>{t('Timetable')}</button>
           <button className={dutyMode ? 'on' : ''} aria-pressed={dutyMode} onClick={() => !dutyMode && setPage(lastOf.current.duty)}>{t('Duty')}</button>
@@ -137,7 +138,7 @@ export default function App() {
               <button onClick={() => { close(); pickFile() }}><Icon n="open" /> {t('Open…')}</button>
               <button onClick={() => { close(); save(p, false) }}><Icon n="save" /> {t('Save')} <span className="hint">Ctrl+S</span></button>
               {native && <button onClick={() => { close(); save(p, true) }}><Icon n="save" /> {t('Save as…')} <span className="hint">Ctrl+Shift+S</span></button>}
-              <button onClick={() => { close(); exportCopy(p) }}><Icon n="download" /> {t('Export dated copy')}</button>
+              <button onClick={() => { close(); exportCopy(p) }}><Icon n="download" /> {t('Back up as ZIP')}</button>
               <hr />
               <button onClick={() => { close(); setDemoOpen(true) }}><Icon n="cap" /> {t('Load demo school')}</button>
             </>}
@@ -185,8 +186,8 @@ async function save(p: Project, saveAs: boolean) {
 function exportCopy(p: Project) {
   const now = new Date(), two = (n: number) => String(n).padStart(2, '0')
   const stamp = `${two(now.getDate())}.${two(now.getMonth() + 1)}.${now.getFullYear()}_${two(now.getHours())}.${two(now.getMinutes())}`
-  const name = `${fileName(p)}_${stamp}.duzenbaz`
-  return download(name, JSON.stringify(p, null, 1), 'application/json')
+  const name = `${fileName(p)}_${stamp}`
+  return download(name + '.zip', zip([[name + '.duzenbaz', JSON.stringify(p, null, 1)]]), 'application/zip')
 }
 
 function SaveFolder() {
