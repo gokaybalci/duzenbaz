@@ -13,6 +13,8 @@ import { SHEET_CSS } from './pages/Sheets'
 import { TimetablePage } from './pages/Timetable'
 import { native } from './native'
 import { zip } from './xlsx'
+import { bg } from './assets'
+import { version } from '../package.json'
 import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
 import { canRedo, canUndo, getProject, markSaved, redo, replaceProject, undo, useProject, useSaved } from './store'
 import { setNavigator } from './nav'
@@ -104,7 +106,7 @@ export default function App() {
     <div className="app">
       <style>{SHEET_CSS}</style>
       <nav className="sidebar no-print">
-        <div className="brand"><span className="logo-wrap" data-tip="Gökay"><img className="logo" src="/logo.svg" alt="" /></span>{t('Düzenbaz')}</div>
+        <div className="brand"><span className="tip" data-tip="Gökay"><img className="logo" src="/logo.svg" alt="" /></span>{t('Düzenbaz')}</div>
         <div className="mod-switch" role="group" aria-label={t('Module')}>
           <button className={dutyMode ? '' : 'on'} aria-pressed={!dutyMode} onClick={() => dutyMode && setPage(lastOf.current.tt)}>{t('Timetable')}</button>
           <button className={dutyMode ? 'on' : ''} aria-pressed={dutyMode} onClick={() => !dutyMode && setPage(lastOf.current.duty)}>{t('Duty')}</button>
@@ -207,9 +209,10 @@ function SaveFolder() {
 
 function SettingsMenu() {
   const a = useAppearance()
-  return (
+  const [about, setAbout] = useState(false)
+  return (<>
     <Menu up className="nav-item" label={<><Icon n="settings" />{t('Settings')}</>}>
-      {() => <div style={{ width: 280 }}>
+      {close => <div style={{ width: 280 }}>
         <div className="menu-title">{t('Save folder')}</div>
         <SaveFolder />
         <div className="menu-title">{t('Colour theme')}</div>
@@ -237,10 +240,25 @@ function SettingsMenu() {
             </button>
           ))}
         </div>
+        <div className="row hint" style={{ padding: '8px 4px 0', gap: 4 }}>
+          <a className="btn ghost icon" href={REPO} target="_blank" rel="noreferrer" title="GitHub" aria-label="GitHub"
+            onClick={e => { if (native) { e.preventDefault(); native.openRepo().catch(() => {}) } }}
+            onContextMenu={e => { e.preventDefault(); close(); setAbout(true) }}><Icon n="github" /></a>
+          {t('Version')} {version}
+        </div>
       </div>}
     </Menu>
-  )
+    {about && <Modal title={<>Düzenbaz {version}</>} onClose={() => setAbout(false)}>
+      <div className="stack" style={{ alignItems: 'center', maxWidth: 360 }}>
+        <span className="tip inside" data-tip={t('Momo and Tarçın ❤️')} style={{ width: '100%' }}>
+          <img src={bg} alt={t('Momo and Tarçın ❤️')} style={{ width: '100%', borderRadius: 10, display: 'block' }} />
+        </span>
+      </div>
+    </Modal>}
+  </>)
 }
+
+const REPO = 'https://github.com/gokaybalci/duzenbaz'
 
 function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
   const [type, setType] = useState<SchoolType>('')

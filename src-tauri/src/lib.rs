@@ -201,6 +201,32 @@ async fn save_export(app: tauri::AppHandle, name: String, data: Vec<u8>, ext: St
     }
 }
 
+// Fixed URL so the webview cannot ask us to open anything else.
+#[tauri::command]
+fn open_repo() -> Result<(), String> {
+    const URL: &str = "https://github.com/gokaybalci/duzenbaz";
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        use std::os::windows::process::CommandExt;
+        let mut c = std::process::Command::new("rundll32");
+        c.args(["url.dll,FileProtocolHandler", URL]).creation_flags(0x0800_0000);
+        c
+    };
+    #[cfg(target_os = "macos")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("open");
+        c.arg(URL);
+        c
+    };
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let mut cmd = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(URL);
+        c
+    };
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn cpu_count() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2)
@@ -223,7 +249,7 @@ pub fn run() {
             *app.state::<CurrentFile>().0.lock().unwrap() = saved;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, get_save_dir, choose_save_dir, save_export, startup_file, cpu_count])
+        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, get_save_dir, choose_save_dir, save_export, startup_file, cpu_count, open_repo])
         .run(tauri::generate_context!())
         .expect("error while running Düzenbaz");
 }

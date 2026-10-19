@@ -378,6 +378,8 @@ export const tr: Record<string, string> = {
   'Signature': 'İmza',
   'Vice principal': 'Müdür Yardımcısı',
   'Back up as ZIP': 'ZIP olarak yedekle',
+  'Version': 'Sürüm',
+  'Momo and Tarçın ❤️': 'Momo ve Tarçın ❤️',
   'The lessons changed while generating, so the result was discarded. Generate again.': 'Dağıtım sırasında dersler değişti, bu yüzden sonuç kullanılmadı. Yeniden dağıtın.',
   'Module': 'Modül',
   'Duty': 'Nöbet',

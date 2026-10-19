@@ -17,6 +17,7 @@ export const native = inTauri ? {
   saveExport: (name: string, data: Uint8Array, ext: 'html' | 'csv' | 'xlsx' | 'zip') => invoke<string | null>('save_export', { name, data: Array.from(data), ext }),
   startupFile: async () => toFile(await invoke('startup_file')),
   cpuCount: () => invoke<number>('cpu_count'),
+  openRepo: () => invoke<void>('open_repo'),
   setZoom: (scale: number) => getCurrentWebview().setZoom(scale),
 } : undefined
 
