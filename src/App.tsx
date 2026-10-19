@@ -12,6 +12,7 @@ import { SchoolPage } from './pages/School'
 import { SHEET_CSS } from './pages/Sheets'
 import { TimetablePage } from './pages/Timetable'
 import { native } from './native'
+import { isDprg, readDprg } from './dprg'
 import { zip } from './xlsx'
 import { bg } from './assets'
 import { version } from '../package.json'
@@ -57,6 +58,7 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
+  const [dprgNote, setDprgNote] = useState(false)
 
   useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch {} }, [page])
   useEffect(() => {
@@ -83,12 +85,14 @@ export default function App() {
   const open = async (f: { name: string; arrayBuffer(): Promise<ArrayBuffer> }) => {
     try {
       const buf = await f.arrayBuffer()
-      const proj: Project = JSON.parse(new TextDecoder().decode(buf))
+      const dprg = isDprg(f.name)
+      const proj: Project = dprg ? await readDprg(buf) : JSON.parse(new TextDecoder().decode(buf))
       if (!proj.days || !proj.lessons) throw new Error(t('Not a timetable project file'))
       replaceProject(proj)
-      markSaved(getProject())
+      if (!dprg) markSaved(getProject()) // an imported Dağıtmatik file is saved as a new .duzenbaz
       toast(t('Opened {name}', { name: f.name }))
       setPage(Object.keys(proj.placements ?? {}).length ? 'timetable' : 'lessons')
+      setDprgNote(dprg)
     } catch (e) {
       alert(t('Could not open the file') + ':\n' + (e instanceof Error ? e.message : String(e)))
     }
@@ -145,7 +149,7 @@ export default function App() {
               <button onClick={() => { close(); setDemoOpen(true) }}><Icon n="cap" /> {t('Load demo school')}</button>
             </>}
           </Menu>
-          <input ref={fileInput} type="file" accept=".duzenbaz,.json,application/json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = '' }} />
+          <input ref={fileInput} type="file" accept=".duzenbaz,.json,.dprg,application/json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = '' }} />
         </header>
         <main className="content">
           {page === 'start' && <StartPage go={setPage} openFile={pickFile} openDemo={() => setDemoOpen(true)} />}
@@ -165,6 +169,10 @@ export default function App() {
       </div>
       {newOpen && <NewProjectDialog onClose={() => setNewOpen(false)} onCreate={() => { setNewOpen(false); setPage('school') }} />}
       {demoOpen && <DemoDialog onClose={() => setDemoOpen(false)} onCreate={() => { setDemoOpen(false); setPage('generate') }} />}
+      {dprgNote && <Modal title={t('Imported from Dağıtmatik')} onClose={() => setDprgNote(false)}
+        footer={<button className="btn primary" onClick={() => setDprgNote(false)}>{t('Done')}</button>}>
+        <p style={{ maxWidth: 420, margin: 0 }}>{t('This file comes from Dağıtmatik, a different program, so some settings may not carry over exactly. Check the teachers, lessons and timetable, then use File → Save to keep it as a Düzenbaz project.')}</p>
+      </Modal>}
       <ToastHost />
     </div>
   )

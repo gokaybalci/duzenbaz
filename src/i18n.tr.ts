@@ -91,6 +91,8 @@ export const tr: Record<string, string> = {
   'Load demo school': 'Örnek okulu yükle',
   'Start a new empty project? Unsaved changes will be lost (you can still undo).': 'Yeni boş proje başlatılsın mı? Kaydedilmemiş değişiklikler kaybolur (yine de geri alabilirsiniz).',
   'Opened {name}': '{name} açıldı',
+  'Imported from Dağıtmatik': 'Dağıtmatik dosyası içe aktarıldı',
+  'This file comes from Dağıtmatik, a different program, so some settings may not carry over exactly. Check the teachers, lessons and timetable, then use File → Save to keep it as a Düzenbaz project.': 'Bu dosya başka bir programın (Dağıtmatik) kaydı, bu yüzden bazı ayarlar birebir aktarılmamış olabilir. Öğretmenleri, dersleri ve ders programını kontrol edin; ardından Düzenbaz projesi olarak saklamak için Dosya → Kaydet\'i kullanın.',
   'Saved {name}': '{name} kaydedildi',
   'Could not open the file': 'Dosya açılamadı',
   'Not a timetable project file': 'Bu bir ders programı proje dosyası değil',

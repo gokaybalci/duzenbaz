@@ -16,7 +16,7 @@ struct OpenedFile {
     data: Vec<u8>,
 }
 
-const PROJECT_EXTS: [&str; 2] = ["duzenbaz", "json"];
+const PROJECT_EXTS: [&str; 3] = ["duzenbaz", "json", "dprg"];
 
 fn file_name(p: &Path) -> String {
     p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
