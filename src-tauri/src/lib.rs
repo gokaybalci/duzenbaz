@@ -14,6 +14,7 @@ struct CurrentFile(Mutex<Option<PathBuf>>);
 struct OpenedFile {
     name: String,
     data: Vec<u8>,
+    path: Option<String>,
 }
 
 const PROJECT_EXTS: [&str; 3] = ["duzenbaz", "json", "dprg"];
@@ -82,8 +83,9 @@ fn free_name(dir: &Path, suggested: &str) -> PathBuf {
 fn read_project(app: &tauri::AppHandle, path: PathBuf, cur: &CurrentFile) -> Result<OpenedFile, String> {
     let data = fs::read(&path).map_err(|e| e.to_string())?;
     let name = file_name(&path);
-    set_current(app, cur, has_ext(&path, &["duzenbaz"]).then_some(path));
-    Ok(OpenedFile { name, data })
+    let path = has_ext(&path, &["duzenbaz"]).then_some(path);
+    set_current(app, cur, path.clone());
+    Ok(OpenedFile { name, data, path: path.map(|p| p.to_string_lossy().into_owned()) })
 }
 
 fn write_atomic(path: &Path, data: &[u8]) -> Result<(), String> {
@@ -158,6 +160,14 @@ async fn save_project(
 #[tauri::command]
 fn forget_project_path(app: tauri::AppHandle, cur: State<'_, CurrentFile>) {
     set_current(&app, &cur, None);
+}
+
+// The webview only confirms the path we recorded ourselves: it can never point Save at a new file.
+#[tauri::command]
+fn restore_project_path(app: tauri::AppHandle, cur: State<'_, CurrentFile>, path: Option<String>) {
+    let last = read_setting(&app, "current-file").map(PathBuf::from).filter(|p| p.is_file());
+    let same = last.filter(|p| path.as_deref() == Some(&*p.to_string_lossy()));
+    set_current(&app, &cur, same);
 }
 
 #[tauri::command]
@@ -243,13 +253,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(CurrentFile::default())
-        .setup(|app| {
-            use tauri::Manager;
-            let saved = read_setting(app.handle(), "current-file").map(PathBuf::from).filter(|p| p.is_file());
-            *app.state::<CurrentFile>().0.lock().unwrap() = saved;
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, get_save_dir, choose_save_dir, save_export, startup_file, cpu_count, open_repo])
+        .invoke_handler(tauri::generate_handler![open_project, save_project, forget_project_path, restore_project_path, get_save_dir, choose_save_dir, save_export, startup_file, cpu_count, open_repo])
         .run(tauri::generate_context!())
         .expect("error while running Düzenbaz");
 }

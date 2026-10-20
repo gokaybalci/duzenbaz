@@ -17,7 +17,7 @@ import { zip } from './xlsx'
 import { bg } from './assets'
 import { version } from '../package.json'
 import { FONTS, setAppearance, TEXT_SIZES, THEMES, useAppearance } from './theme'
-import { canRedo, canUndo, getProject, markSaved, redo, replaceProject, undo, useProject, useSaved } from './store'
+import { canRedo, canUndo, getFilePath, getProject, markSaved, setFilePath, redo, replaceProject, undo, useProject, useSaved } from './store'
 import { setNavigator } from './nav'
 import { download, Menu, Modal, PageTitle, toast, ToastHost } from './ui'
 
@@ -62,7 +62,7 @@ export default function App() {
 
   useEffect(() => { try { localStorage.setItem('duzenbaz.page', page) } catch {} }, [page])
   useEffect(() => {
-    native?.startupFile().then(f => { if (f) open({ name: f.name, arrayBuffer: async () => f.data.slice().buffer }) }).catch(() => {})
+    native?.startupFile().then(f => f ? open({ name: f.name, path: f.path, arrayBuffer: async () => f.data.slice().buffer }) : native?.restoreProjectPath(getFilePath())).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
@@ -82,18 +82,20 @@ export default function App() {
     'duty-teachers': p.teachers.length, 'duty-places': p.duty.places.length, 'duty-specials': p.duty.specials.length,
   }
 
-  const open = async (f: { name: string; arrayBuffer(): Promise<ArrayBuffer> }) => {
+  const open = async (f: { name: string; path?: string | null; arrayBuffer(): Promise<ArrayBuffer> }) => {
     try {
       const buf = await f.arrayBuffer()
       const dprg = isDprg(f.name)
       const proj: Project = dprg ? await readDprg(buf) : JSON.parse(new TextDecoder().decode(buf))
       if (!proj.days || !proj.lessons) throw new Error(t('Not a timetable project file'))
       replaceProject(proj)
+      setFilePath(f.path ?? null)
       if (!dprg) markSaved(getProject()) // an imported Dağıtmatik file is saved as a new .duzenbaz
       toast(t('Opened {name}', { name: f.name }))
       setPage(Object.keys(proj.placements ?? {}).length ? 'timetable' : 'lessons')
       setDprgNote(dprg)
     } catch (e) {
+      setFilePath(null) // the native side already switched to the file that failed to open
       alert(t('Could not open the file') + ':\n' + (e instanceof Error ? e.message : String(e)))
     }
   }
@@ -102,7 +104,7 @@ export default function App() {
     if (!native) { fileInput.current?.click(); return }
     try {
       const f = await native.openProject()
-      if (f) open({ name: f.name, arrayBuffer: async () => f.data.slice().buffer })
+      if (f) open({ name: f.name, path: f.path, arrayBuffer: async () => f.data.slice().buffer })
     } catch (e) { alert(t('Could not open the file') + ':\n' + String(e)) }
   }
 
@@ -184,7 +186,7 @@ async function save(p: Project, saveAs: boolean) {
   if (native) {
     try {
       const saved = await native.saveProject(json, saveAs, name)
-      if (saved) { markSaved(p); toast(t('Saved to {path}', { path: saved })) }
+      if (saved) { setFilePath(saved); markSaved(p); toast(t('Saved to {path}', { path: saved })) }
     } catch (e) { alert(t('Could not save the file') + ':\n' + String(e)) }
     return
   }
@@ -271,7 +273,7 @@ const REPO = 'https://github.com/gokaybalci/duzenbaz'
 function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
   const [type, setType] = useState<SchoolType>('')
   const create = () => {
-    native?.forgetProjectPath()
+    setFilePath(null)
     const e = emptyProject()
     e.days = DAY_NAMES[document.documentElement.lang === 'tr' ? 'tr' : 'en'].slice(0, 5)
     e.schoolType = type
@@ -309,7 +311,7 @@ function DemoDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () =
     <Modal title={t('Demo school')} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
-        <button className="btn primary" disabled={!ok} onClick={() => { native?.forgetProjectPath(); replaceProject(demoProject({ classes, teachers })); onCreate() }}>{t('Create')}</button>
+        <button className="btn primary" disabled={!ok} onClick={() => { setFilePath(null); replaceProject(demoProject({ classes, teachers })); onCreate() }}>{t('Create')}</button>
       </>}>
       <div className="stack" style={{ maxWidth: 420 }}>
         <p className="hint" style={{ margin: 0 }}>{t('Creates a sample ortaokul (grades 5–8, 35 lesson hours a week per class). It replaces the current project; you can undo.')}</p>

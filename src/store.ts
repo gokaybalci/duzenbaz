@@ -5,6 +5,7 @@ import { native } from './native'
 
 const KEY = 'duzenbaz.project.v1'
 const SAVED_KEY = 'duzenbaz.saved'
+const PATH_KEY = 'duzenbaz.file'
 const MAX_HISTORY = 200
 
 function load(): Project {
@@ -40,19 +41,30 @@ let past: Project[] = []
 let future: Project[] = []
 let lastTag = '', lastTagAt = 0
 const listeners = new Set<() => void>()
-let saveTimer: number | undefined
 let saved: Project | null = null
-try { if (localStorage.getItem(SAVED_KEY) === '1') saved = state } catch {}
+let filePath: string | null = null
+try { if (localStorage.getItem(SAVED_KEY) === '1') saved = state; filePath = localStorage.getItem(PATH_KEY) } catch {}
 
+// Written at once (about 1 ms for 40 classes) and together, so the working copy and its file path never drift apart.
 function emit() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state))
+    localStorage.setItem(SAVED_KEY, state === saved ? '1' : '0')
+    if (filePath) localStorage.setItem(PATH_KEY, filePath)
+    else localStorage.removeItem(PATH_KEY)
+  } catch {}
   listeners.forEach(l => l())
-  clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.setItem(SAVED_KEY, state === saved ? '1' : '0') } catch {}
-  }, 400)
 }
 
 export const getProject = () => state
+export const getFilePath = () => filePath
+
+// The .duzenbaz file the working copy belongs to; null = the next Save writes a new file.
+export function setFilePath(path: string | null) {
+  filePath = path
+  if (!path) native?.forgetProjectPath()
+  emit()
+}
 
 export function markSaved(p: Project) {
   saved = p
@@ -86,17 +98,18 @@ export function replaceProject(p: Project) {
 export function undo() {
   const prev = past.pop()
   if (!prev) return
-  if (loaded.has(state)) native?.forgetProjectPath()
+  const leavingFile = loaded.has(state)
   future.push(state); state = prev; lastTag = ''
-  emit()
+  if (leavingFile) setFilePath(null)
+  else emit()
 }
 
 export function redo() {
   const next = future.pop()
   if (!next) return
-  if (loaded.has(next)) native?.forgetProjectPath()
   past.push(state); state = next; lastTag = ''
-  emit()
+  if (loaded.has(next)) setFilePath(null)
+  else emit()
 }
 
 export const canUndo = () => past.length > 0
