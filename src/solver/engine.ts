@@ -164,19 +164,19 @@ export class Solver {
 
     this.lgCount = groups.length
     groups.forEach((g, lg) => {
-      const res = new Set<number>()
+      const res: number[] = [] // not a Set: a teacher or class in two linked lessons is a clash and must count twice
       const avails: string[] = [p.avail]
       for (const l of g) {
         const s = subj.get(l.subjectId)
         if (s) avails.push(s.avail)
-        for (const t of l.teacherIds) { const i = resIdx.get('t:' + t); if (i !== undefined) { res.add(i); avails.push(resAvail[i]) } }
-        for (const r of l.roomIds) { const i = resIdx.get('r:' + r); if (i !== undefined) { res.add(i); avails.push(resAvail[i]) } }
+        for (const t of l.teacherIds) { const i = resIdx.get('t:' + t); if (i !== undefined) { res.push(i); avails.push(resAvail[i]) } }
+        for (const r of l.roomIds) { const i = resIdx.get('r:' + r); if (i !== undefined) { res.push(i); avails.push(resAvail[i]) } }
         for (const c of l.classes) {
           const atoms = classAtoms.get(c.classId)
           if (!atoms) continue
           const cls = p.classes.find(x => x.id === c.classId)!
-          if (c.groupId === null || !cls.groups.length) atoms.forEach(a => res.add(a))
-          else { const i = resIdx.get('c:' + c.classId + ':' + c.groupId); if (i !== undefined) res.add(i) }
+          if (c.groupId === null || !cls.groups.length) atoms.forEach(a => res.push(a))
+          else { const i = resIdx.get('c:' + c.classId + ':' + c.groupId); if (i !== undefined) res.push(i) }
           avails.push(cls.avail)
         }
       }
@@ -199,7 +199,7 @@ export class Solver {
         }
         const label = g.map(describe).join(' / ') + ` (${len}h)`
         if (!dom.length && !locked) this.pre.push({ kind: 'noSlot', who: label, cards })
-        this.units.push({ cards, len, res: [...res], lg, domain: Int32Array.from(dom), locked, fixedStart, label })
+        this.units.push({ cards, len, res, lg, domain: Int32Array.from(dom), locked, fixedStart, label })
       })
     })
 
@@ -223,7 +223,7 @@ export class Solver {
     this.pos = new Int32Array(this.units.length).fill(-1)
     this.unplaced = this.units.length
     this.unitsOfRes = Array.from({ length: R }, () => [])
-    this.units.forEach((u, i) => u.res.forEach(r => this.unitsOfRes[r].push(i)))
+    this.units.forEach((u, i) => new Set(u.res).forEach(r => this.unitsOfRes[r].push(i)))
   }
 
   private dsHours = 0

@@ -13,6 +13,10 @@ run() {
 }
 
 [[ -d node_modules ]] || npm ci --no-audit --no-fund
+# check before building; set -e stops on the first failure (check:dprg needs the samples in /ssdy/rea/dagit)
+npm run -s typecheck
+npm run -s lint
+for c in duty subjects solver dprg; do npm run -s check:$c; done
 
 if [[ "$WHAT" == all || "$WHAT" == linux ]]; then
   docker build -q -t duzenbaz-build:linux --build-arg UBUNTU=22.04 packaging
