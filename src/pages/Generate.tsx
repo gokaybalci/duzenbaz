@@ -8,6 +8,9 @@ import { defaultWorkers, runSolver, type RunHandle } from '../solver/runner'
 import { getProject, update, useProject } from '../store'
 import { PageTitle, toast } from '../ui'
 
+// Project parts the solver reads as hard rules; a result computed from older ones may break them.
+const SOLVER_INPUT = ['lessons', 'teachers', 'classes', 'rooms', 'subjects', 'avail', 'days', 'periods', 'strictClasses', 'useRooms'] as const
+
 const ISSUE_TEXT: Record<Issue['kind'], string> = {
   noSlot: 'No possible time slot (availabilities never overlap)',
   teacherClash: 'Teacher double-booked',
@@ -70,7 +73,8 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
     const h = runSolver(p, { timeLimitMs: seconds * 1000, workers, keepPlacements: keep }, best => setProg(best))
     handle.current = h
     h.done.then(r => {
-      if (getProject().lessons !== p.lessons) { toast(t('The lessons changed while generating, so the result was discarded. Generate again.')); return }
+      const now = getProject()
+      if (SOLVER_INPUT.some(k => now[k] !== p[k])) { toast(t('The timetable data changed while generating, so the result was discarded. Generate again.')); return }
       setResult(r)
       update(d => {
         const keepLocked = Object.fromEntries(Object.entries(d.placements).filter(([, v]) => v.locked))

@@ -382,7 +382,7 @@ export const tr: Record<string, string> = {
   'Back up as ZIP': 'ZIP olarak yedekle',
   'Version': 'Sürüm',
   'Momo and Tarçın ❤️': 'Momo ve Tarçın ❤️',
-  'The lessons changed while generating, so the result was discarded. Generate again.': 'Dağıtım sırasında dersler değişti, bu yüzden sonuç kullanılmadı. Yeniden dağıtın.',
+  'The timetable data changed while generating, so the result was discarded. Generate again.': 'Dağıtım sırasında ders programı bilgileri değişti, bu yüzden sonuç kullanılmadı. Yeniden dağıtın.',
   'Module': 'Modül',
   'Duty': 'Nöbet',
   'Setup': 'Hazırlık',

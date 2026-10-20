@@ -58,9 +58,10 @@ export function zip(files: [string, string][]): Uint8Array<ArrayBuffer> {
       return h
     }
     const local = head(0x04034b50, 30)
-    local.setUint16(4, 20, true); local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, n.length, true)
+    // flag 0x800: names are UTF-8, so Turkish letters survive in Windows Explorer and unzip
+    local.setUint16(4, 20, true); local.setUint16(6, 0x800, true); local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, n.length, true)
     const cen = head(0x02014b50, 46)
-    cen.setUint16(4, 20, true); cen.setUint16(6, 20, true); cen.setUint32(16, crc, true); cen.setUint32(20, data.length, true); cen.setUint32(24, data.length, true); cen.setUint16(28, n.length, true); cen.setUint32(42, offset, true)
+    cen.setUint16(4, 20, true); cen.setUint16(6, 20, true); cen.setUint16(8, 0x800, true); cen.setUint32(16, crc, true); cen.setUint32(20, data.length, true); cen.setUint32(24, data.length, true); cen.setUint16(28, n.length, true); cen.setUint32(42, offset, true)
     parts.push(new Uint8Array(local.buffer), n, data)
     central.push(new Uint8Array(cen.buffer), n)
     offset += 30 + n.length + data.length
