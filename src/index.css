@@ -299,6 +299,7 @@ button.link:hover { text-decoration: underline; }
 .table-wrap:has(> .duty-tt) { width: fit-content; max-width: 100%; }
 .duty-tt th.ph { width: 104px; }
 .duty-tt th.ph .menu { float: right; }
+.duty-log { margin: 8px 0 0; padding-left: 18px; font-size: 13px; max-height: 320px; overflow: auto; }
 .duty-tt th.ph .menu-pop { left: 0; right: auto; font-weight: 400; }
 .duty-tt th:not(.ph) { width: 170px; }
 .duty-tt td { height: 44px; }

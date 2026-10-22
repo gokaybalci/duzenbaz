@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, cancelDay, substitute, DUTY_SHIFTS, fitsSlot, isDoubleShift, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, cancelDay, logFill, replaceOnLeave, DUTY_SHIFTS, fitsSlot, isDoubleShift, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
@@ -390,10 +390,9 @@ export function DutyPlanPage() {
     toast(t('Duties swapped'))
   }
   const replace = (date: string, key: string) => {
-    const sub = substitute(p, date, key)
-    if (!sub) { toast(t('No free teacher for this cell')); return }
-    setCell(date, key, sub)
-    toast(t('{name} takes the duty', { name: teachers.get(sub)!.name }))
+    let sub = ''
+    update(d => { sub = replaceOnLeave(d, date, key) })
+    toast(sub ? t('{name} takes the duty', { name: teachers.get(sub)?.name ?? '' }) : t('No free teacher for this cell'))
   }
   const toggleLock = (date: string, key: string) => update(d => {
     const k = `${date}|${key}`
@@ -410,7 +409,7 @@ export function DutyPlanPage() {
       <Problem p={p} />
       {slots.length > 0 && duty.length > 0 && (<>
         <div className="card pad row">
-          <button className="btn primary" onClick={() => { update(d => fillMonth(d, month)); toast(t('{m} distributed', { m: monthLabel(month) })) }}><Icon n="zap" /> {t('Distribute {m}', { m: monthLabel(month) })}</button>
+          <button className="btn primary" onClick={() => { update(d => { fillMonth(d, month); logFill(d, month) }); toast(t('{m} distributed', { m: monthLabel(month) })) }}><Icon n="zap" /> {t('Distribute {m}', { m: monthLabel(month) })}</button>
           <button className="btn" disabled={!filled} onClick={() => update(d => { for (const [date, row] of Object.entries(d.duty.assign)) if (date.startsWith(month)) for (const key of Object.keys(row)) d.duty.locked[`${date}|${key}`] = true })}><Icon n="lock" /> {t('Lock every duty')}</button>
           <button className="btn" disabled={!locks} onClick={() => update(d => { for (const k of Object.keys(d.duty.locked)) if (k.startsWith(month)) delete d.duty.locked[k] })}><Icon n="unlock" /> {t('Unlock all')} ({locks})</button>
           <button className="btn danger" disabled={!hasPlan(p, month)} onClick={() => {
@@ -512,6 +511,11 @@ export function DutyPlanPage() {
           </table>
         </div>
         <div className="sheet"><div className="ts"><Counters p={p} v={v} hl={hl} onPick={id => setHl(x => (x === id ? '' : id))} /></div></div>
+        <details className="card pad no-print">
+          <summary className="hint" style={{ cursor: 'pointer' }}>{t('Duty log')} ({p.duty.log.length})</summary>
+          {!p.duty.log.length ? <p className="hint">{t('Distributions, sick-leave changes and snow holidays are noted here.')}</p>
+            : <ul className="duty-log">{p.duty.log.map((line, i) => <li key={i}>{line}</li>)}</ul>}
+        </details>
       </>)}
     </div>
   )

@@ -113,6 +113,7 @@ export interface Duty {
   prefer: Record<string, boolean[]>
   fixed: Record<string, string>
   shift: Record<string, DutyShift>
+  log: string[]
   hoursWeight: number
 }
 
@@ -168,7 +169,7 @@ export function emptyProject(): Project {
     useRooms: false,
     schoolType: '',
     doubleShift: false,
-    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, shift: {}, hoursWeight: 0 },
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, shift: {}, log: [], hoursWeight: 0 },
   }
 }
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { cancelDay, dutyCounts, dutyDays, dutySlots, fitsSlot, substitute, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { cancelDay, dutyCounts, logFill, replaceOnLeave, dutyDays, dutySlots, fitsSlot, substitute, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { loadOf } from '../src/timetable'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
@@ -166,15 +166,25 @@ for (const d of ['2026-09', '2026-10'].flatMap(monthDates).filter(d => weekdayOf
 }
 
 const sick = '2026-10-14', sickKey = Object.keys(ds.duty.assign[sick])[0], ill = ds.duty.assign[sick][sickKey]
+ds.duty.hoursWeight = 1 // the substitute is chosen by duty load only, never by lesson hours
 const sub = substitute(ds, sick, sickKey), before = dutyCounts(ds, '9999-12-31')
 assert.ok(sub && sub !== ill && !Object.values(ds.duty.assign[sick]).includes(sub), 'sick leave: someone free that day takes the duty')
 assert.ok(fitsSlot(ds, sub, sickKey), 'and works in that shift')
 const fewest = Math.min(...ds.teachers.filter(x => dutyDays(ds).get(x.id)![weekdayOf(sick)] && fitsSlot(ds, x.id, sickKey) && !Object.values(ds.duty.assign[sick]).includes(x.id)).map(x => before.get(x.id)!.total))
 assert.equal(before.get(sub)!.total, fewest, 'the substitute has the fewest duties')
+const leave = '2026-10-13', leaveKey = Object.keys(ds.duty.assign[leave])[0], expect = substitute(ds, leave, leaveKey)
+assert.equal(replaceOnLeave(ds, leave, leaveKey), expect, 'the replacement uses the same choice')
+assert.ok(ds.duty.assign[leave][leaveKey] === expect && ds.duty.locked[`${leave}|${leaveKey}`], 'the cell gets the substitute and is locked')
+assert.ok(ds.duty.log[0].includes('13.10.2026') && ds.duty.log[0].includes(ds.teachers.find(x => x.id === expect)!.name), 'and the change is logged')
 const snow = '2026-10-15', n = Object.keys(ds.duty.assign[snow]).length, total = (c: ReturnType<typeof dutyCounts>) => [...c.values()].reduce((a, x) => a + x.total, 0)
 cancelDay(ds, snow, 'Kar tatili')
 assert.equal(total(dutyCounts(ds, '9999-12-31')), total(before) - n, 'a snow holiday takes its duties off the counters')
 assert.equal(monthView(ds, '2026-10').rows.find(r => r.date === snow)!.special, 'Kar tatili', 'and shows as a special day')
+assert.ok(ds.duty.log[0].endsWith(`15.10.2026: Kar tatili, ${n} nöbet sayılmadı.`), 'the snow holiday is logged')
+logFill(ds, '2026-10')
+assert.ok(/Ekim 2026 dağıtıldı: \d+ nöbet, \d+ kilitli korundu, 0 boş hücre/.test(ds.duty.log[0]), `the distribution is logged (${ds.duty.log[0]})`)
+for (let i = 0; i < 600; i++) logFill(ds, '2026-10')
+assert.equal(ds.duty.log.length, 500, 'the log keeps the last 500 lines')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

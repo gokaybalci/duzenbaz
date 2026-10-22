@@ -369,19 +369,50 @@ export function fillMonth(p: Project, month: string) {
   }
 }
 
-// Sick leave: the free teacher with the fewest (weighted) duties so far takes the cell.
-export function substitute(p: Project, date: string, key: string): string {
+// Sick leave: the free teacher with the fewest duties so far takes the cell (duty load only, lesson hours play no part).
+export function substitute(p: Project, date: string, key: string, counts = dutyCounts(p, '9999-12-31')): string {
   const wd = weekdayOf(date), days = dutyDays(p)
   const pool = p.teachers.filter(x => roleOf(p, x.id) === 'duty').map(x => x.id)
-  const counts = dutyCounts(p, '9999-12-31'), w = dutyWeights(p, pool)
   const busy = (x: string, d: string) => Object.values(p.duty.assign[d] ?? {}).includes(x)
   const ok = pool.filter(x => days.get(x)![wd] && fitsSlot(p, x, key) && !busy(x, date) && (allowsRun(p, x) || ![shiftDate(date, -1), shiftDate(date, 1)].some(d => busy(x, d))))
-  const score = (x: string) => counts.get(x)!.total * w.get(x)!
-  return ok.sort((a, b) => score(a) - score(b))[0] ?? ''
+  return ok.sort((a, b) => counts.get(a)!.total - counts.get(b)!.total)[0] ?? ''
+}
+
+// Writes the substitute into the cell, locks it and logs it; '' when nobody is free.
+export function replaceOnLeave(p: Project, date: string, key: string): string {
+  const counts = dutyCounts(p, '9999-12-31'), sub = substitute(p, date, key, counts)
+  if (!sub) return ''
+  const name = (id: string) => p.teachers.find(x => x.id === id)?.name ?? ''
+  addLog(p, t('{date} {place}: {was} on leave → {name} ({n} duties, the fewest).', {
+    date: trDate(date), place: dutySlots(p).find(s => s.key === key)?.name ?? '', was: name(p.duty.assign[date][key]), name: name(sub), n: counts.get(sub)!.total,
+  }))
+  p.duty.assign[date][key] = sub
+  p.duty.locked[`${date}|${key}`] = true
+  return sub
+}
+
+// Newest first; capped so the project file stays small.
+// shortcut: lines are stored in the language active when written, so a later TR/EN switch leaves old lines as they were; store keys + values if mixed logs ever matter.
+export function addLog(p: Project, line: string) {
+  const now = new Date()
+  p.duty.log.unshift(`${trDate(iso(now))} ${now.toTimeString().slice(0, 5)} — ${line}`)
+  p.duty.log.length = Math.min(p.duty.log.length, 500)
+}
+
+export function logFill(p: Project, month: string) {
+  const v = monthView(p, month), slots = dutySlots(p), days = dutyDays(p)
+  let cells = 0, empty = 0
+  for (const d of v.rows) {
+    cells += Object.keys(d.row).length
+    if (!d.special && v.duty.some(x => days.get(x.id)![d.weekday])) empty += slots.filter(s => !d.row[s.key]).length
+  }
+  const locked = Object.keys(p.duty.locked).filter(k => k.startsWith(month)).length
+  addLog(p, t('{m} distributed: {n} duties, {l} locked kept, {e} empty cells; fewest {min}, most {max} duties per teacher.', { m: monthLabel(month), n: cells, l: locked, e: empty, min: v.min, max: v.max }))
 }
 
 // Snow holiday: the day becomes a special day and its duties no longer count.
 export function cancelDay(p: Project, date: string, name: string) {
+  addLog(p, t('{date}: {name}, {n} duties not counted.', { date: trDate(date), name, n: Object.keys(p.duty.assign[date] ?? {}).length }))
   p.duty.specials.push({ id: newId('h'), from: date, to: date, name })
   delete p.duty.assign[date]
   for (const k of Object.keys(p.duty.locked)) if (k.startsWith(date + '|')) delete p.duty.locked[k]
