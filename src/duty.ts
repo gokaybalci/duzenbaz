@@ -1,5 +1,5 @@
 import { t } from './i18n'
-import { parseCardId, type DutyRole, type Project, type SpecialDay } from './model'
+import { newId, parseCardId, type DutyRole, type DutyShift, type Project, type SpecialDay } from './model'
 import { loadOf } from './timetable'
 import { ref, S, type Cell, type Sheet } from './xlsx'
 
@@ -34,10 +34,17 @@ export const dutyDays = (p: Project, school = schoolDays(p)) =>
 
 export const roleOf = (p: Project, id: string): DutyRole => p.duty.role[id] ?? 'duty'
 
-export interface Slot { key: string; place: string }
+export const DUTY_SHIFTS: [DutyShift, string][] = [['morning', 'Morning shift'], ['afternoon', 'Afternoon shift']]
+
+// İkili öğretim: every place is staffed in both shifts; afternoon keys end in #o so single-shift keys stay as they were.
+export const isDoubleShift = (p: Project) => p.schoolType === 'ilkokul' && p.doubleShift
+
+export interface Slot { key: string; place: string; name: string }
 
 export const dutySlots = (p: Project): Slot[] =>
-  p.duty.places.flatMap(pl => Array.from({ length: Math.max(0, pl.count) }, (_, k) => ({ key: `${pl.id}#${k}`, place: pl.id })))
+  (isDoubleShift(p) ? DUTY_SHIFTS : [null]).flatMap(sh => p.duty.places.flatMap(pl => Array.from({ length: Math.max(0, pl.count) }, (_, k) => ({
+    key: `${pl.id}#${k}${sh?.[0] === 'afternoon' ? '#o' : ''}`, place: pl.id, name: sh ? `${pl.name} (${t(sh[1])})` : pl.name,
+  }))))
 
 export const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const parse = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
@@ -102,6 +109,11 @@ const fixedPlace = (p: Project, t: string) => { const f = p.duty.fixed[t]; retur
 
 export const fitsPlace = (p: Project, t: string, place: string) => { const f = fixedPlace(p, t); return !f || f === place }
 
+export const fitsSlot = (p: Project, t: string, key: string) => {
+  const sh = isDoubleShift(p) && p.duty.shift[t]
+  return fitsPlace(p, t, key.split('#')[0]) && (!sh || sh === (key.endsWith('#o') ? 'afternoon' : 'morning'))
+}
+
 export const HOURS_WEIGHTS: [number, string][] = [[0, 'Balance off'], [0.25, 'Light balance'], [0.5, 'Medium balance'], [1, 'Strong balance']]
 
 export function dutyWeights(p: Project, pool: string[]) {
@@ -124,7 +136,7 @@ export function fillMonth(p: Project, month: string) {
   const history = dutyCounts(p, shiftDate(dates[0], -1))
   const past = new Map(pool.map(t => [t, history.get(t)!.total]))
   const weight = dutyWeights(p, pool), wt = (t: string) => weight.get(t)!
-  const fits = (t: string, pl: string) => fitsPlace(p, t, pl)
+  const fits = (t: string, key: string) => fitsSlot(p, t, key)
   const pastAt = new Map(pool.map(t => {
     const h = history.get(t)!, places = { ...h.places }
     const byHand = h.total - Object.values(h.places).reduce((x, y) => x + y, 0)
@@ -187,7 +199,7 @@ export function fillMonth(p: Project, month: string) {
       const bench = pool.filter(t => !used.has(t) && there(t, date))
       open.forEach((s, i) => {
         let best = -1, bestCost = 0
-        bench.forEach((t, j) => { if (!fits(t, s.place)) return; const c = cost(t, s.place, date); if (best < 0 || c < bestCost) { best = j; bestCost = c } })
+        bench.forEach((t, j) => { if (!fits(t, s.key)) return; const c = cost(t, s.place, date); if (best < 0 || c < bestCost) { best = j; bestCost = c } })
         if (best >= 0) pick[i] = bench.splice(best, 1)[0]
       })
       for (let better = true; better;) {
@@ -197,14 +209,14 @@ export function fillMonth(p: Project, month: string) {
           if (!a) continue
           for (let j = i + 1; j < open.length; j++) {
             const b = pick[j]
-            if (!b || open[i].place === open[j].place || !fits(a, open[j].place) || !fits(b, open[i].place)) continue
+            if (!b || open[i].place === open[j].place || !fits(a, open[j].key) || !fits(b, open[i].key)) continue
             if (cost(a, open[j].place, date) + cost(b, open[i].place, date) < cost(a, open[i].place, date) + cost(b, open[j].place, date) - 1e-9) {
               pick[i] = b; pick[j] = a; better = true
             }
           }
           for (let j = 0; j < bench.length; j++) {
             const cur = pick[i]!, b = bench[j]
-            if (fits(b, open[i].place) && cost(b, open[i].place, date) < cost(cur, open[i].place, date) - 1e-9) { pick[i] = b; bench[j] = cur; better = true }
+            if (fits(b, open[i].key) && cost(b, open[i].place, date) < cost(cur, open[i].place, date) - 1e-9) { pick[i] = b; bench[j] = cur; better = true }
           }
         }
       }
@@ -241,7 +253,7 @@ export function fillMonth(p: Project, month: string) {
           const row = rows.get(d)!
           if (!there(x, d) || Object.values(row).includes(x)) continue
           for (const [key, u] of Object.entries(row)) {
-            if (seen.has(u) || !free(d, key) || !total.has(u) || !fits(x, place(key))) continue
+            if (seen.has(u) || !free(d, key) || !total.has(u) || !fits(x, key)) continue
             seen.add(u)
             prev.set(u, { to: x, date: d, key })
             if (wcount(u, w) >= 2) { goal = u; break }
@@ -274,7 +286,7 @@ export function fillMonth(p: Project, month: string) {
             onDay ??= new Set(Object.values(row))
             const w = weekOf(date), lone = wcount(x, w) < 2
             for (const y of pool) {
-              if (seen.has(y) || onDay.has(y) || !can(y, date) || !fits(y, place(key)) || (lone && wcount(y, w) > 0)) continue
+              if (seen.has(y) || onDay.has(y) || !can(y, date) || !fits(y, key) || (lone && wcount(y, w) > 0)) continue
               seen.add(y)
               prev.set(y, { from: x, date, key })
               queue.push(y)
@@ -313,7 +325,7 @@ export function fillMonth(p: Project, month: string) {
         const keys = Object.keys(row).filter(k => free(date, k) && total.has(row[k]))
         for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
           const a = row[keys[i]], b = row[keys[j]], pa = place(keys[i]), pb = place(keys[j])
-          if (pa === pb || !fits(a, pb) || !fits(b, pa)) continue
+          if (pa === pb || !fits(a, keys[j]) || !fits(b, keys[i])) continue
           const w = weekOf(date)
           const now = swapScore(a, pa, b, pb) + 5 * (repeats(a, w) + repeats(b, w))
           trade(a, pa, b, pb, 1)
@@ -333,7 +345,7 @@ export function fillMonth(p: Project, month: string) {
       const c1 = cells[i], c2 = cells[j], r1 = rows.get(c1.date)!, r2 = rows.get(c2.date)!
       const a = r1[c1.key], b = r2[c2.key], pa = place(c1.key), pb = place(c2.key)
       if (c1.date === c2.date || a === b || holds(r1, b) || holds(r2, a)) continue
-      if (!there(b, c1.date) || !there(a, c2.date) || !fits(b, pa) || !fits(a, pb)) continue
+      if (!there(b, c1.date) || !there(a, c2.date) || !fits(b, c1.key) || !fits(a, c2.key)) continue
       const w1 = weekOf(c1.date), w2 = weekOf(c2.date)
       if (w1 !== w2 && ((wcount(a, w1) < 2 && wcount(b, w1) > 0) || (wcount(b, w2) < 2 && wcount(a, w2) > 0))) continue
       const miss = (x: string, d: string, except = '') => (likes(x, d) ? 0 : 10) + (near(x, d, except) ? 100 : 0)
@@ -357,6 +369,24 @@ export function fillMonth(p: Project, month: string) {
   }
 }
 
+// Sick leave: the free teacher with the fewest (weighted) duties so far takes the cell.
+export function substitute(p: Project, date: string, key: string): string {
+  const wd = weekdayOf(date), days = dutyDays(p)
+  const pool = p.teachers.filter(x => roleOf(p, x.id) === 'duty').map(x => x.id)
+  const counts = dutyCounts(p, '9999-12-31'), w = dutyWeights(p, pool)
+  const busy = (x: string, d: string) => Object.values(p.duty.assign[d] ?? {}).includes(x)
+  const ok = pool.filter(x => days.get(x)![wd] && fitsSlot(p, x, key) && !busy(x, date) && (allowsRun(p, x) || ![shiftDate(date, -1), shiftDate(date, 1)].some(d => busy(x, d))))
+  const score = (x: string) => counts.get(x)!.total * w.get(x)!
+  return ok.sort((a, b) => score(a) - score(b))[0] ?? ''
+}
+
+// Snow holiday: the day becomes a special day and its duties no longer count.
+export function cancelDay(p: Project, date: string, name: string) {
+  p.duty.specials.push({ id: newId('h'), from: date, to: date, name })
+  delete p.duty.assign[date]
+  for (const k of Object.keys(p.duty.locked)) if (k.startsWith(date + '|')) delete p.duty.locked[k]
+}
+
 export const heat = (v: number, min: number, max: number): 'low' | 'mid' | 'high' => (max === min || v === min ? 'low' : v === max ? 'high' : 'mid')
 
 export const trDate = (iso: string) => iso.split('-').reverse().join('.')
@@ -374,7 +404,7 @@ export function buildSheet(p: Project, month: string, title: string): Sheet {
   const places = p.duty.places, slots = dutySlots(p), teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const v = monthView(p, month)
   const width = Math.max(1 + slots.length, places.length + 2)
-  const rows: Cell[][] = [[{ v: title, s: S.Title }], [], [{ v: t('Date'), s: S.Head }, ...slots.map(s => ({ v: places.find(x => x.id === s.place)!.name, s: S.Head }))]]
+  const rows: Cell[][] = [[{ v: title, s: S.Title }], [], [{ v: t('Date'), s: S.Head }, ...slots.map(s => ({ v: s.name, s: S.Head }))]]
   const merges = [`A1:${ref(width - 1, 0)}`]
   for (const d of v.rows) {
     const label = `${trDate(d.date)} ${WEEKDAYS[d.weekday]}`
@@ -398,7 +428,7 @@ export function buildCsv(p: Project, month: string): string {
   const places = p.duty.places, slots = dutySlots(p), teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const v = monthView(p, month)
   const q = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`
-  const lines = [[t('Date'), t('Day'), ...slots.map(s => places.find(x => x.id === s.place)!.name)].map(q).join(';')]
+  const lines = [[t('Date'), t('Day'), ...slots.map(s => s.name)].map(q).join(';')]
   for (const d of v.rows)
     lines.push([trDate(d.date), WEEKDAYS[d.weekday], ...slots.map(s => (d.special && !Object.keys(d.row).length ? d.special : teacher.get(d.row[s.key]) ?? ''))].map(q).join(';'))
   lines.push('', [t('Teacher'), ...places.map(pl => pl.name), t('Total duties')].map(q).join(';'))

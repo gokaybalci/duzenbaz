@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, fitsPlace, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
+  DUTY_ROLES, HOURS_WEIGHTS, MONTHS, MONTHS_ACC, allowsRun, cancelDay, substitute, DUTY_SHIFTS, fitsSlot, isDoubleShift, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
 } from '../duty'
 import { Icon } from '../icons'
 import { PasteList } from './Entities'
 import { getLang, t } from '../i18n'
-import { colorVars, fileName, newId, pickColor, upperName, type DutyRole, type Project } from '../model'
+import { colorVars, fileName, newId, pickColor, upperName, type DutyRole, type DutyShift, type Project } from '../model'
 import { native } from '../native'
 import { removeTeacher, update, useProject } from '../store'
 import { navigate } from '../nav'
-import { download, Empty, Modal, PageTitle, toast } from '../ui'
+import { download, Empty, Menu, Modal, PageTitle, toast } from '../ui'
 import { loadOf } from '../timetable'
 import { xlsx } from '../xlsx'
 
@@ -138,7 +138,7 @@ export function DutyTeachersPage() {
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
           <table className="data">
-            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th>{p.duty.places.length > 0 && <th>{t('Fixed place')}</th>}<th className="num">{t('Lesson hours')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
+            <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th>{isDoubleShift(p) && <th>{t('Shift')}</th>}{p.duty.places.length > 0 && <th>{t('Fixed place')}</th>}<th className="num">{t('Lesson hours')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
               {p.teachers.map(te => {
                 const role = roleOf(p, te.id), on = days.get(te.id)!, base = school.get(te.id)!
@@ -167,6 +167,15 @@ export function DutyTeachersPage() {
                         })}
                       </div>
                     </td>
+                    {isDoubleShift(p) && (
+                      <td>
+                        <select value={p.duty.shift[te.id] ?? ''} aria-label={t('Shift')}
+                          onChange={e => update(d => { if (e.target.value) d.duty.shift[te.id] = e.target.value as DutyShift; else delete d.duty.shift[te.id] })}>
+                          <option value="">{t('Both shifts')}</option>
+                          {DUTY_SHIFTS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+                        </select>
+                      </td>
+                    )}
                     {p.duty.places.length > 0 && (
                       <td>
                         <select value={p.duty.places.some(x => x.id === p.duty.fixed[te.id]) ? p.duty.fixed[te.id] : ''} aria-label={t('Fixed place')}
@@ -336,7 +345,6 @@ export function DutyPlanPage() {
   const month = currentMonth(p)
   const v = useMemo(() => monthView(p, month), [p, month])
   const slots = dutySlots(p)
-  const places = new Map(p.duty.places.map(x => [x.id, x.name]))
   const days = useMemo(() => dutyDays(p), [p])
   const duty = v.duty
   const teachers = new Map(p.teachers.map(x => [x.id, x]))
@@ -381,6 +389,12 @@ export function DutyPlanPage() {
     })
     toast(t('Duties swapped'))
   }
+  const replace = (date: string, key: string) => {
+    const sub = substitute(p, date, key)
+    if (!sub) { toast(t('No free teacher for this cell')); return }
+    setCell(date, key, sub)
+    toast(t('{name} takes the duty', { name: teachers.get(sub)!.name }))
+  }
   const toggleLock = (date: string, key: string) => update(d => {
     const k = `${date}|${key}`
     if (d.duty.locked[k]) delete d.duty.locked[k]
@@ -423,7 +437,7 @@ export function DutyPlanPage() {
         </div>
         {swapFrom && (
           <div className="card pad row swap-bar">
-            <Icon n="swap" /> <span style={{ flex: 1 }}>{t('Pick the cell to swap with {date} {place}. Esc cancels.', { date: trDate(swapFrom.date), place: places.get(swapFrom.key.split('#')[0]) ?? '' })}</span>
+            <Icon n="swap" /> <span style={{ flex: 1 }}>{t('Pick the cell to swap with {date} {place}. Esc cancels.', { date: trDate(swapFrom.date), place: slots.find(s => s.key === swapFrom.key)?.name ?? '' })}</span>
             <button className="btn small" onClick={() => setSwapFrom(null)}><Icon n="x" /> {t('Cancel')}</button>
           </div>
         )}
@@ -446,7 +460,7 @@ export function DutyPlanPage() {
         )}
         <div className="card table-wrap">
           <table className="tt duty-tt">
-            <thead><tr><th className="ph">{t('Date')}</th>{slots.map(s => <th key={s.key}>{places.get(s.place)}</th>)}</tr></thead>
+            <thead><tr><th className="ph">{t('Date')}</th>{slots.map(s => <th key={s.key}>{s.name}</th>)}</tr></thead>
             <tbody>
               {v.rows.map(d => {
                 const filled = Object.keys(d.row).length > 0
@@ -454,19 +468,32 @@ export function DutyPlanPage() {
                 const ids = Object.values(d.row), twice = new Set(ids.filter((x, i) => ids.indexOf(x) !== i))
                 return (
                   <tr key={d.date}>
-                    <th className="ph">{trDate(d.date)}<small>{WEEKDAYS[d.weekday]}</small></th>
+                    <th className="ph">
+                      {!d.special && !off && (
+                        <Menu className="btn ghost small" label="…">
+                          {close => <>
+                            {slots.filter(s => d.row[s.key]).map(s => (
+                              <button key={s.key} onClick={() => { close(); replace(d.date, s.key) }}>{t('{name} is on leave: give it to the teacher with the fewest duties', { name: teachers.get(d.row[s.key])?.name ?? '' })}</button>
+                            ))}
+                            {filled && <hr />}
+                            <button onClick={() => { close(); update(x => cancelDay(x, d.date, t('Snow holiday'))) }}>{t('Snow holiday: this day\'s duties are not counted')}</button>
+                          </>}
+                        </Menu>
+                      )}
+                      {trDate(d.date)}<small>{WEEKDAYS[d.weekday]}</small>
+                    </th>
                     {d.special && !filled ? <td colSpan={slots.length} className="closed sp"><s>{d.special}</s></td>
                       : off ? <td colSpan={slots.length} className="closed" />
                         : slots.map(s => {
                           const cur = d.row[s.key] ?? '', locked = !!p.duty.locked[`${d.date}|${s.key}`], te = teachers.get(cur)
-                          const options = duty.filter(x => (days.get(x.id)![d.weekday] && fitsPlace(p, x.id, s.place)) || x.id === cur)
+                          const options = duty.filter(x => (days.get(x.id)![d.weekday] && fitsSlot(p, x.id, s.key)) || x.id === cur)
                           const src = swapFrom?.date === d.date && swapFrom.key === s.key
                           return (
                             <td key={s.key}>
                               <div className={`tcard ${twice.has(cur) ? 'clash' : ''} ${cur ? '' : 'none'} ${runs.has(`${d.date}|${s.key}`) ? 'run' : ''} ${cur && cur === hl ? 'hl' : ''} ${src ? 'swap-src' : ''}`} style={colorVars(te?.color, 0.14) as React.CSSProperties}>
                                 <b>{te?.name ?? '—'}</b>
-                                <span>{places.get(s.place)}{cur ? ` · ${v.counts.get(cur)?.total ?? 0}` : ''}</span>
-                                <select value={cur} onChange={e => setCell(d.date, s.key, e.target.value)} aria-label={`${trDate(d.date)} ${places.get(s.place)}`}>
+                                <span>{s.name}{cur ? ` · ${v.counts.get(cur)?.total ?? 0}` : ''}</span>
+                                <select value={cur} onChange={e => setCell(d.date, s.key, e.target.value)} aria-label={`${trDate(d.date)} ${s.name}`}>
                                   <option value="">—</option>
                                   {options.map(x => <option key={x.id} value={x.id}>{x.name} ({v.counts.get(x.id)!.total})</option>)}
                                 </select>
@@ -495,7 +522,6 @@ export function DutyPrintPage() {
   const month = currentMonth(p)
   const v = useMemo(() => monthView(p, month), [p, month])
   const slots = dutySlots(p)
-  const places = new Map(p.duty.places.map(x => [x.id, x.name]))
   const teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const title = `${p.school.name || t('School')} – ${t('Duty roster')} – ${monthLabel(month)}`
   const ready = slots.length > 0 && v.duty.length > 0 && hasPlan(p, month)
@@ -518,7 +544,7 @@ export function DutyPrintPage() {
         <div className="sheet"><div className="ts">
           <div className="ts-head"><h1>{title}</h1></div>
           <table className="dt">
-            <thead><tr><th>{t('Date')}</th>{slots.map(s => <th key={s.key}>{places.get(s.place)}</th>)}</tr></thead>
+            <thead><tr><th>{t('Date')}</th>{slots.map(s => <th key={s.key}>{s.name}</th>)}</tr></thead>
             <tbody>
               {v.rows.map(d => (
                 <tr key={d.date}>

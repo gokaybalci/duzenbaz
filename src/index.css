@@ -298,6 +298,8 @@ button.link:hover { text-decoration: underline; }
 .duty-tt { width: auto; }
 .table-wrap:has(> .duty-tt) { width: fit-content; max-width: 100%; }
 .duty-tt th.ph { width: 104px; }
+.duty-tt th.ph .menu { float: right; }
+.duty-tt th.ph .menu-pop { left: 0; right: auto; font-weight: 400; }
 .duty-tt th:not(.ph) { width: 170px; }
 .duty-tt td { height: 44px; }
 .duty-tt td.sp { text-align: center; vertical-align: middle; color: var(--muted); }

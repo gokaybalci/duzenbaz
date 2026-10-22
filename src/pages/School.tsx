@@ -49,6 +49,12 @@ export function SchoolPage() {
               {SCHOOL_TYPES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
           </label>
+          {p.schoolType === 'ilkokul' && (
+            <label className="check">
+              <input type="checkbox" checked={p.doubleShift} onChange={e => update(d => { d.doubleShift = e.target.checked })} />
+              <span>{t('Double-shift schooling (sabahçı / öğlenci duty)')}</span>
+            </label>
+          )}
           <div className="row">
             <label className="field" style={{ flex: 1 }}>{t('School year')}
               <input value={p.school.year} placeholder="2026-2027" onChange={e => update(d => { d.school.year = e.target.value }, 'school.year')} />

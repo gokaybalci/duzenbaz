@@ -79,6 +79,7 @@ export interface Project {
   strictClasses: boolean
   useRooms: boolean
   schoolType: SchoolType
+  doubleShift: boolean
   duty: Duty
 }
 
@@ -89,6 +90,8 @@ export interface DutyPlace {
 }
 
 export type DutyRole = 'duty' | 'admin' | 'dutyAdmin' | 'preschool' | 'none'
+
+export type DutyShift = 'morning' | 'afternoon'
 
 export interface SpecialDay {
   id: string
@@ -109,6 +112,7 @@ export interface Duty {
   consecutive: Record<string, boolean>
   prefer: Record<string, boolean[]>
   fixed: Record<string, string>
+  shift: Record<string, DutyShift>
   hoursWeight: number
 }
 
@@ -163,7 +167,8 @@ export function emptyProject(): Project {
     strictClasses: true,
     useRooms: false,
     schoolType: '',
-    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, hoursWeight: 0 },
+    doubleShift: false,
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, shift: {}, hoursWeight: 0 },
   }
 }
 

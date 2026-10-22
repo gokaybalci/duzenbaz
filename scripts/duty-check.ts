@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { dutyCounts, dutyDays, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { cancelDay, dutyCounts, dutyDays, dutySlots, fitsSlot, substitute, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { loadOf } from '../src/timetable'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
@@ -146,6 +146,35 @@ for (const d of ['2026-09', '2026-10', '2026-11'].flatMap(monthDates).filter(d =
   assert.equal(Object.keys(hw.duty.assign[d] ?? {}).length, 3, `${d}: every place filled with weighting on`)
 const w = dutyWeights(hw, ids)
 for (let i = 1; i < ids.length; i++) if (hrs.get(ids[i])! > hrs.get(ids[i - 1])!) assert.ok(w.get(ids[i])! >= w.get(ids[i - 1])!, 'more hours never means a lighter weight')
+
+const ds = migrate(demoProject({ classes: 12 }))
+assert.ok(!ds.doubleShift && Object.keys(ds.duty.shift).length === 0, 'older files open as single-shift')
+ds.duty.places = [{ id: 'a', name: 'BAHÇE', count: 2 }, { id: 'b', name: 'BİNA', count: 1 }]
+ds.doubleShift = true
+assert.equal(dutySlots(ds).length, 3, 'İkili öğretim only counts for İlkokul')
+ds.schoolType = 'ilkokul'
+assert.equal(dutySlots(ds).filter(s => s.key.endsWith('#o')).length, 3, 'every place gets an afternoon slot too')
+ds.teachers.forEach((t, i) => { if (i % 5) ds.duty.shift[t.id] = i % 2 ? 'morning' : 'afternoon' })
+for (const m of ['2026-09', '2026-10']) fillMonth(ds, m)
+for (const d of ['2026-09', '2026-10'].flatMap(monthDates).filter(d => weekdayOf(d) < 5)) {
+  const row = ds.duty.assign[d] ?? {}
+  assert.equal(Object.keys(row).length, 6, `${d}: both shifts filled`)
+  for (const [k, x] of Object.entries(row)) {
+    const sh = ds.duty.shift[x]
+    assert.ok(!sh || sh === (k.endsWith('#o') ? 'afternoon' : 'morning'), `${d} ${k}: a sabahçı teacher only stands morning duty, an öğlenci one only afternoon duty`)
+  }
+}
+
+const sick = '2026-10-14', sickKey = Object.keys(ds.duty.assign[sick])[0], ill = ds.duty.assign[sick][sickKey]
+const sub = substitute(ds, sick, sickKey), before = dutyCounts(ds, '9999-12-31')
+assert.ok(sub && sub !== ill && !Object.values(ds.duty.assign[sick]).includes(sub), 'sick leave: someone free that day takes the duty')
+assert.ok(fitsSlot(ds, sub, sickKey), 'and works in that shift')
+const fewest = Math.min(...ds.teachers.filter(x => dutyDays(ds).get(x.id)![weekdayOf(sick)] && fitsSlot(ds, x.id, sickKey) && !Object.values(ds.duty.assign[sick]).includes(x.id)).map(x => before.get(x.id)!.total))
+assert.equal(before.get(sub)!.total, fewest, 'the substitute has the fewest duties')
+const snow = '2026-10-15', n = Object.keys(ds.duty.assign[snow]).length, total = (c: ReturnType<typeof dutyCounts>) => [...c.values()].reduce((a, x) => a + x.total, 0)
+cancelDay(ds, snow, 'Kar tatili')
+assert.equal(total(dutyCounts(ds, '9999-12-31')), total(before) - n, 'a snow holiday takes its duties off the counters')
+assert.equal(monthView(ds, '2026-10').rows.find(r => r.date === snow)!.special, 'Kar tatili', 'and shows as a special day')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)

@@ -272,11 +272,13 @@ const REPO = 'https://github.com/gokaybalci/duzenbaz'
 
 function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
   const [type, setType] = useState<SchoolType>('')
+  const [double, setDouble] = useState(false)
   const create = () => {
     setFilePath(null)
     const e = emptyProject()
     e.days = DAY_NAMES[document.documentElement.lang === 'tr' ? 'tr' : 'en'].slice(0, 5)
     e.schoolType = type
+    e.doubleShift = type === 'ilkokul' && double
     addMandatorySubjects(e, type)
     replaceProject(e)
     onCreate()
@@ -297,6 +299,12 @@ function NewProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate
             <span>{label}</span>
           </label>
         ))}
+        {type === 'ilkokul' && (
+          <label className="check">
+            <input type="checkbox" checked={double} onChange={e => setDouble(e.target.checked)} />
+            <span>{t('Double-shift schooling (sabahçı / öğlenci duty)')}</span>
+          </label>
+        )}
       </div>
     </Modal>
   )
