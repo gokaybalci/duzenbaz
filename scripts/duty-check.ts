@@ -98,6 +98,25 @@ assert.deepEqual(uncoveredWeeks(q, '2026-11'), [], 'still a duty every week with
 fillMonth(q, '2026-12')
 assert.deepEqual([...uncoveredWeeks(q, '2026-11'), ...uncoveredWeeks(q, '2026-12')], [], 'a week split over two months is covered once both are distributed')
 
+const year = ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03', '2027-04', '2027-05', '2027-06']
+for (const n of [8, 10, 12]) for (const order of [year, [...year].reverse(), ['2026-11', '2027-03', '2026-09', '2027-01', '2026-12', '2027-06', '2026-10', '2027-04', '2027-02', '2027-05']]) {
+  const sw = migrate(demoProject({ classes: 12 }))
+  sw.teachers = sw.teachers.slice(0, n)
+  sw.teachers.forEach(t => { sw.duty.days[t.id] = [true, true, true, true, true, false, false] })
+  sw.duty.places = [{ id: 'a', name: 'BAHÇE', count: 1 }, { id: 'b', name: 'BİNA', count: 1 }]
+  for (const m of order) fillMonth(sw, m)
+  // 10 weekly places: 10 teachers get exactly one each, 8 get at least one, 12 leave exactly two out, even in weeks cut by a month end
+  for (const w of new Set(year.flatMap(monthDates).map(d => shiftDate(d, -weekdayOf(d))))) {
+    const days = Array.from({ length: 5 }, (_, i) => shiftDate(w, i))
+    if (days[0] < '2026-09-01' || days[4] > '2027-06-30') continue
+    const c = sw.teachers.map(t => days.filter(d => Object.values(sw.duty.assign[d] ?? {}).includes(t.id)).length)
+    const miss = c.filter(x => !x).length, max = Math.max(...c)
+    assert.ok(n === 10 ? !miss && max === 1 : n === 8 ? !miss && max <= 2 : miss === 2 && max === 1, `${n} teachers, week ${w}: ${c}`)
+  }
+  const warn = year.flatMap(m => uncoveredWeeks(sw, m)).filter(x => x.from > '2026-09-04')
+  assert.ok(n <= 10 ? !warn.length : warn.every(x => x.teachers.length === 2), `${n} teachers: only the unavoidable misses are reported`)
+}
+
 assert.ok(!monthView(p, '2026-12').duty.some(x => x.id === t6.id), 'Nöbet tutmaz teachers are left out of the counters')
 const gone = full[1], lessonsBefore = p.lessons.length
 const goneKey = Object.keys(p.duty.assign['2026-12-01'] ?? {}).find(k => p.duty.assign['2026-12-01'][k] === gone)
