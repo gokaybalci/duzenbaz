@@ -14,6 +14,7 @@ export interface Teacher extends Entity {
   maxPerDay: number
   maxDays: number
   maxGapsPerDay: number
+  subjectIds?: string[]
 }
 
 export interface Room extends Entity {
@@ -351,4 +352,15 @@ export function arrangeByTeacher(p: Project, classId: string, subjectId: string,
   }
   rounds.forEach((r, k) => { if (r.length > 1) for (const l of r) l.link = `${tag} ${k + 1}` })
   return rounds.reduce((a, r) => a + r.length, 0)
+}
+
+export const teachersOf = (p: Project, subjectId: string) => p.teachers.filter(t => t.subjectIds?.includes(subjectId))
+
+export function fillTeachers(p: Project) {
+  let n = 0
+  for (const l of p.lessons) {
+    const ts = l.teacherIds.length ? [] : teachersOf(p, l.subjectId)
+    if (ts.length === 1) { l.teacherIds = [ts[0].id]; n++ }
+  }
+  return n
 }

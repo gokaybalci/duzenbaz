@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Icon, type IconName } from '../icons'
 import { t } from '../i18n'
-import { arrangeByTeacher, newId, parseSplit, parseStudents, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
+import { arrangeByTeacher, fillTeachers, newId, parseSplit, parseStudents, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
-import { AvailabilityEditor, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
+import { AvailabilityEditor, ChipSelect, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
 
 export type EntityKey = 'subjects' | 'teachers' | 'rooms' | 'classes'
 
@@ -120,7 +120,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
     update(d => {
       if (entity === 'teachers') return removeTeacher(d, e.id)
       ;(d[entity] as Entity[]).splice((d[entity] as Entity[]).findIndex(x => x.id === e.id), 1)
-      if (entity === 'subjects') d.lessons = d.lessons.filter(l => l.subjectId !== e.id)
+      if (entity === 'subjects') { d.lessons = d.lessons.filter(l => l.subjectId !== e.id); d.teachers.forEach(x => { if (x.subjectIds) x.subjectIds = x.subjectIds.filter(s => s !== e.id) }) }
       if (entity === 'rooms') d.lessons.forEach(l => { l.roomIds = l.roomIds.filter(x => x !== e.id) })
       if (entity === 'classes') {
         d.lessons.forEach(l => { l.classes = l.classes.filter(c => c.classId !== e.id) })
@@ -154,9 +154,10 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
             <thead>
               <tr>
                 <th style={{ width: 40 }}></th>
-                <th>{sortHead('name', t('Name'))}</th>
+                <th style={{ minWidth: 170 }}>{sortHead('name', t('Name'))}</th>
                 <th style={{ width: 110 }}>{sortHead('short', t('Short'))}</th>
                 <th style={{ width: 90 }}>{t('Availability')}</th>
+                {entity === 'teachers' && <th title={t('Subjects this teacher teaches. If a subject has only one teacher, new lessons of it get that teacher automatically.')}>{t('Teaches')}</th>}
                 {entity === 'teachers' && <><th className="num" title={t('Max hours per day (0 = no limit)')}>{t('Max/day')}</th><th className="num" title={t('Max days per week (0 = no limit)')}>{t('Max days')}</th><th className="num" title={t('Max idle periods per day (empty = no limit)')}>{t('Max gaps/day')}</th></>}
                 {entity === 'classes' && <><th className="num">{t('Students')}</th><th>{t('Groups')}</th></>}
                 {entity === 'rooms' && <th className="num" title={t('How many identical rooms of this kind the school has (e.g. 2 gyms). A lesson needs any one of them.')}>{t('Quantity')}</th>}
@@ -177,6 +178,8 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                     }} /></td>
                     <td><input value={e.short} onChange={ev => edit(e.id, x => { x.short = ev.target.value }, 'short')} /></td>
                     <td><MiniGrid value={e.avail} days={p.days.length} periods={p.periods.length} onClick={() => setAvailFor(e.id)} /></td>
+                    {entity === 'teachers' && <td><ChipSelect items={p.subjects} value={(e as Teacher).subjectIds ?? []} placeholder={t('+ subject…')}
+                      onChange={v => { let n = 0; update(d => { d.teachers.find(x => x.id === e.id)!.subjectIds = v; n = fillTeachers(d as Project) }); if (n) toast(t('{n} lessons without a teacher got this teacher', { n })) }} /></td>}
                     {entity === 'teachers' && (() => {
                       const tt = e as Teacher
                       return <>

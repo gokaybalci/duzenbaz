@@ -434,4 +434,8 @@ export const tr: Record<string, string> = {
   'Some students would have no lesson': 'Bazı öğrencilerin dersi olmayacak',
   'Lesson time {k}': '{k}. ders saati',
   'Every student needs a lesson at that time: put all students of a teacher in one lesson, or give the free students another group lesson then (e.g. group them by teacher for a second instrument). Otherwise Generate reports it as an error.': 'O saatte her öğrencinin dersi olmalı: bir öğretmenin bütün öğrencilerini tek derse alın ya da boşta kalan öğrencilere o saatte başka bir grup dersi verin (ör. ikinci çalgı için de öğretmene göre gruplayın). Yapılmazsa Dağıt bunu hata olarak bildirir.',
+  'Teaches': 'Branşı / dersleri',
+  'Subjects this teacher teaches. If a subject has only one teacher, new lessons of it get that teacher automatically.': 'Öğretmenin okuttuğu dersler. Bir dersi okutan tek öğretmen varsa o dersin yeni tanımları bu öğretmene kendiliğinden verilir.',
+  '+ subject…': '+ ders…',
+  '{n} lessons without a teacher got this teacher': 'Öğretmeni olmayan {n} ders bu öğretmene verildi',
 }

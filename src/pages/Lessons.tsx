@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
 import { t } from '../i18n'
-import { defaultSplit, lessonHours, newId, parseSplit, splitLabel, type ClassRef, type Lesson, type Project } from '../model'
+import { defaultSplit, fillTeachers, lessonHours, teachersOf, newId, parseSplit, splitLabel, type ClassRef, type Lesson, type Project } from '../model'
 import { prunePlacements, update, useProject } from '../store'
 import { classLabel, loadOf, names } from '../timetable'
 import { ChipSelect, Empty, Modal, PageTitle, toast } from '../ui'
@@ -42,7 +42,7 @@ export function LessonsPage() {
 
   const add = () => {
     if (!valid(draft)) return
-    update(d => { d.lessons.push({ ...draft, id: newId('l') }) })
+    update(d => { d.lessons.push({ ...draft, id: newId('l') }); fillTeachers(d as Project) })
     toast(t('Lesson added'))
     setDraft({ ...blankLesson(filter), classes: draft.classes, teacherIds: filter.kind === 'teacher' ? draft.teacherIds : [] })
   }
@@ -86,7 +86,7 @@ export function LessonsPage() {
 
         {(!p.subjects.length || !p.classes.length) && <div className="card pad hint">{t('Add subjects, classes and teachers first. Then define which lessons each class takes here.')}</div>}
 
-        {filter.kind === 'teacher' && <TeacherAssign p={p} teacherId={filter.id} />}
+        {filter.kind === 'teacher' && <TeacherAssign key={filter.id} p={p} teacherId={filter.id} />}
 
         <div className="card pad stack">
           <h3>{filter.kind === 'teacher' ? t('Other lesson (several classes or teachers together)') : t('Add lesson')}</h3>
@@ -155,8 +155,9 @@ const sameRef = (a: ClassRef, b: ClassRef) => a.classId === b.classId && a.group
 
 function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
   const n = names(p)
-  const [subjectId, setSubjectId] = useState('')
-  const [splitText, setSplitText] = useState('2')
+  const own = p.teachers.find(x => x.id === teacherId)?.subjectIds ?? []
+  const [subjectId, setSubjectId] = useState(own[0] ?? '')
+  const [splitText, setSplitText] = useState(() => { const used = p.lessons.find(l => l.subjectId === own[0]); return used ? splitLabel(used.split) : '2' })
   const split = parseSplit(splitText)
   const refs: ClassRef[] = p.classes.flatMap(c => [{ classId: c.id, groupId: null }, ...c.groups.map(g => ({ classId: c.id, groupId: g.id }))])
   const ofSubject = p.lessons.filter(l => l.subjectId === subjectId)
@@ -181,7 +182,7 @@ function TeacherAssign({ p, teacherId }: { p: Project; teacherId: string }) {
         <label className="field">{t('Subject')}
           <select value={subjectId} onChange={e => pickSubject(e.target.value)}>
             <option value="">{t('Choose…')}</option>
-            {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {[...p.subjects.filter(s => own.includes(s.id)), ...p.subjects.filter(s => !own.includes(s.id))].map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
         <label className="field" title={t('How the weekly hours are split into blocks, e.g. 2+2+1 = two double lessons and one single, each on a different day.')}>{t('Hours / blocks for new ticks')}
@@ -233,13 +234,17 @@ function LessonForm({ p, value, onChange }: { p: Project; value: Lesson; onChang
           <ChipSelect items={classOptions} value={value.classes.map(refKey)} onChange={v => onChange({ ...value, classes: v.map(fromKey) })} placeholder={t('+ class…')} />
         </label>
         <label className="field">{t('Subject')}
-          <select value={value.subjectId} onChange={e => onChange({ ...value, subjectId: e.target.value })}>
+          <select value={value.subjectId} onChange={e => {
+            const sole = teachersOf(p, e.target.value), was = teachersOf(p, value.subjectId)
+            const auto = !value.teacherIds.length || (was.length === 1 && value.teacherIds.length === 1 && value.teacherIds[0] === was[0].id)
+            onChange({ ...value, subjectId: e.target.value, teacherIds: auto ? (sole.length === 1 ? [sole[0].id] : []) : value.teacherIds })
+          }}>
             <option value="">{t('Choose…')}</option>
             {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
         <label className="field" style={{ minWidth: 200 }}>{t('Teacher(s)')}
-          <ChipSelect items={p.teachers} value={value.teacherIds} onChange={v => onChange({ ...value, teacherIds: v })} placeholder={t('+ teacher…')} />
+          <ChipSelect items={[...teachersOf(p, value.subjectId), ...p.teachers.filter(x => !x.subjectIds?.includes(value.subjectId))]} value={value.teacherIds} onChange={v => onChange({ ...value, teacherIds: v })} placeholder={t('+ teacher…')} />
         </label>
         {p.useRooms && <label className="field" style={{ minWidth: 160 }}>{t('Room(s)')}
           <ChipSelect items={p.rooms} value={value.roomIds} onChange={v => onChange({ ...value, roomIds: v })} placeholder={t('+ room…')} />
@@ -285,6 +290,7 @@ function CopyLessons({ p, lessons, onClose }: { p: Project; lessons: Lesson[]; o
                 d.lessons.push({ ...structuredClone(l), id: newId('l'), classes: [{ classId: cid, groupId: g && cls.groups.some(x => x.id === g) ? g : null }], teacherIds: keepTeachers ? [...l.teacherIds] : [], link: '' })
               }
             }
+            fillTeachers(d as Project)
           })
           toast(t('{n} lessons copied', { n: src.length * targets.length }))
           onClose()

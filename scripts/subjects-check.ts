@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { addMandatorySubjects, emptyProject, fileName, MANDATORY_SUBJECTS, parseStudents } from '../src/model'
+import { addMandatorySubjects, emptyProject, fileName, fillTeachers, MANDATORY_SUBJECTS, parseStudents } from '../src/model'
 import { demoProject } from '../src/demo'
 import { migrate } from '../src/store'
 import { buildSheet, fillMonth } from '../src/duty'
@@ -56,5 +56,17 @@ assert.deepEqual(parseStudents('S.No\tSınıf\tÖğrenci No\tAdı Soyadı\n1\t9/
   { classId: null, className: '10-B', no: '456', name: 'AYŞE KAYA' },
 ], 'Excel rows: header skipped, class matched or new, last number is the student number')
 assert.deepEqual(parseStudents('No;Adı;Soyadı\n7;Can;Demir', cls), [{ classId: null, className: '', no: '7', name: 'CAN DEMİR' }], 'CSV without a class column, name in two columns')
+
+const f = demoProject({ classes: 4 })
+const [mat, tur] = [f.subjects[0].id, f.subjects[1].id]
+f.lessons.forEach(l => { l.teacherIds = [] })
+f.teachers[0].subjectIds = [mat]
+f.teachers[1].subjectIds = [tur]
+f.teachers[2].subjectIds = [tur]
+const filled = fillTeachers(f)
+assert.ok(filled > 0 && f.lessons.filter(l => l.subjectId === mat).every(l => l.teacherIds.join() === f.teachers[0].id), 'the only math teacher gets every math lesson without a teacher')
+assert.ok(f.lessons.filter(l => l.subjectId === tur).every(l => !l.teacherIds.length), 'a subject with two teachers is left for the user to pick')
+f.teachers[0].subjectIds = [mat, tur]
+assert.equal(fillTeachers(f), 0, 'lessons that already have a teacher are never changed')
 
 console.log('subjects-check ok')
