@@ -96,6 +96,7 @@ export class Solver {
   soft = 0
   unplaced = 0
   hw = 1500
+  mult: Float64Array
   logging = false
   log: number[] = []
   unitsOfRes: number[][]
@@ -117,6 +118,7 @@ export class Solver {
     for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
     const groupAtoms = new Map<string, number[]>()
+    const cellOf = new Map<number, { cls: string; name: string; groups: string[]; total: number }>()
     for (const c of p.classes) {
       const gName = new Map(c.groups.map(g => [g.id, g.name]))
       const atoms: number[] = []
@@ -125,9 +127,11 @@ export class Solver {
         addRes(key, cell.groups.length ? `${c.name} (${cell.groups.map(g => gName.get(g)).join(' + ')})` : c.name, RES_CLASS, c.avail, w.classGap, -1, 0, 0, w.classLateStart)
         const i = resIdx.get(key)!
         atoms.push(i)
+        cellOf.set(i, { cls: c.id, name: c.name, groups: cell.groups.map(g => gName.get(g) ?? g), total: 0 })
         for (const g of cell.groups) { const k = c.id + ':' + g; groupAtoms.set(k, [...(groupAtoms.get(k) ?? []), i]) }
       }
       classAtoms.set(c.id, atoms)
+      for (const a of atoms) cellOf.get(a)!.total = atoms.length
     }
     const R = this.resName.length
     this.cap = Int32Array.from(caps)
@@ -203,6 +207,24 @@ export class Solver {
       })
     })
 
+    const touch: number[][] = Array.from({ length: R }, () => [])
+    this.units.forEach((u, i) => u.res.forEach(r => touch[r].push(i)))
+    const first = new Map<string, number>(), members = new Map<number, number[]>()
+    this.mult = new Float64Array(R).fill(1)
+    for (const [r, cell] of cellOf) {
+      const k = cell.cls + '|' + touch[r].join(',')
+      const f = first.get(k)
+      if (f === undefined) { first.set(k, r); members.set(r, [r]) }
+      else { members.get(f)!.push(r); this.mult[r] = 0 }
+    }
+    for (const [r, ms] of members) {
+      if (ms.length < 2) continue
+      this.mult[r] = ms.length
+      const cell = cellOf.get(r)!, common = cell.groups.filter(g => ms.every(m => cellOf.get(m)!.groups.includes(g)))
+      this.resName[r] = ms.length === cell.total || !common.length ? cell.name : `${cell.name} (${common.join(' + ')})`
+    }
+    for (const u of this.units) u.res = u.res.filter(r => this.mult[r] > 0)
+
     const need = new Int32Array(R)
     for (const u of this.units) for (const r of u.res) need[r] += u.len
     for (let r = 0; r < R; r++) {
@@ -252,10 +274,11 @@ export class Solver {
 
   dayCost(r: number): [number, number] {
     const hours = this.dsHours, gaps = this.dsGaps, lead = this.dsLead
-    let hard = this.dsConf, soft = 0
+    const m = this.mult[r]
+    let hard = this.dsConf * m, soft = 0
     if (hours) {
-      soft = gaps * this.gapW[r] + lead * this.leadW[r]
-      if (this.compact[r]) hard += gaps + lead
+      soft = (gaps * this.gapW[r] + lead * this.leadW[r]) * m
+      if (this.compact[r]) hard += (gaps + lead) * m
       const mg = this.maxGaps[r]
       if (mg >= 0 && gaps > mg) hard += gaps - mg
       const mpd = this.maxPerDay[r]

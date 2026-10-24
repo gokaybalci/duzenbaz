@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { demoProject } from '../src/demo'
 import { cardId, setStudentTeacher, classCells, emptyProject, fullGrid, newId, type Project, type SchoolClass } from '../src/model'
-import { evaluate, solve } from '../src/solver/engine'
+import { evaluate, solve, Solver } from '../src/solver/engine'
 import { buildIndex } from '../src/timetable'
 
 const p = demoProject({ classes: 12 })
@@ -103,4 +103,15 @@ const ok = rot(true)
 assert.equal(ok.hard, 0, `piano and violin rotate so nobody is idle (${ok.issues.map(i => i.kind + ' ' + i.who).join(', ')})`)
 const idle = rot(false)
 assert.ok(idle.hard > 0 && idle.issues.some(i => i.who.includes('Piyano')), 'piano alone in two lessons leaves students idle and is reported')
+// Students who always share the same lessons are checked once, but count as many times as before.
+const one = new Solver(g)
+const live = [...new Set(one.units.flatMap(u => u.res))].filter(r => one.resName[r].startsWith('9-A'))
+assert.ok(live.length < classCells(k).length, 'identical student timetables are merged')
+let x = 12345
+const rnd = () => ((x = (x * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+for (const sv of [one, new Solver(demoProject({ classes: 6 }))]) {
+  for (let t = 0; t < 5000; t++) { const u = (rnd() * sv.units.length) | 0, dom = sv.units[u].domain; sv.moveTo(u, rnd() < 0.1 || !dom.length ? -1 : dom[(rnd() * dom.length) | 0]) }
+  const full = sv.parts()
+  assert.ok(full.hard === sv.hard + sv.unplaced && Math.abs(full.soft - sv.soft) < 1e-6, 'the running score always matches a full recount')
+}
 console.log('solver-check ok')
