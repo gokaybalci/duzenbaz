@@ -274,7 +274,7 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
         </div>
       </div>
       {!!cls.students?.length && !!cls.groups.length && (
-        <div className="table-wrap" style={{ marginTop: 12, maxHeight: 320, overflow: 'auto' }}>
+        <div className="table-wrap scroll-box" style={{ marginTop: 12, maxHeight: 320, overflow: 'auto' }}>
           <table className="data">
             <thead><tr><th>{t('Student')}</th>{cls.groups.map(g => <th key={g.id} className="num">{g.name}</th>)}</tr></thead>
             <tbody>
@@ -326,7 +326,7 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
           <input value={splitText} style={{ width: 80, borderColor: split ? undefined : 'var(--danger)' }} onChange={e => setSplitText(e.target.value)} />
         </label>
       </div>
-      <div className="table-wrap" style={{ marginTop: 8, maxHeight: 260, overflow: 'auto' }}>
+      <div className="table-wrap scroll-box" style={{ marginTop: 8, maxHeight: 260, overflow: 'auto' }}>
         <table className="data">
           <tbody>
             {cls.students!.map(st => (
@@ -410,7 +410,7 @@ function StudentsModal({ cls, onClose }: { cls?: SchoolClass; onClose: () => voi
     <Modal title={cls ? <>{t('Students')}: {cls.name}</> : t('Paste student list')} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>{t('Done')}</button><button className="btn primary" disabled={!text.trim()} onClick={add}>{t('Add')}</button></>}>
       {!!cls?.students?.length && (
-        <div className="table-wrap" style={{ maxHeight: 260, overflow: 'auto', marginBottom: 12 }}>
+        <div className="table-wrap scroll-box" style={{ maxHeight: 260, overflow: 'auto', marginBottom: 12 }}>
           <table className="data">
             <thead><tr><th className="num">{t('No')}</th><th>{t('Name')}</th><th>{t('Groups')}</th><th style={{ width: 50 }}></th></tr></thead>
             <tbody>
