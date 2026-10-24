@@ -295,7 +295,25 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
       {!!cls.students?.length && !!cols.length && (
         <div className="table-wrap scroll-box" style={{ marginTop: 12, maxHeight: 420, overflow: 'auto' }}>
           <table className="data">
-            <thead><tr><th>{t('Student')}</th>{cols.map(g => <th key={g.id}>{g.name}</th>)}</tr></thead>
+            <thead><tr><th>{t('Student')}</th>{cols.map(g => (
+              <th key={g.id}>
+                <div>{g.name}</div>
+                <select aria-label={t('All students') + ' – ' + g.name} value="" disabled={!g.subjectId} style={{ fontWeight: 'normal' }}
+                  onChange={e => update(d => {
+                    const v = e.target.value
+                    const c = d.classes.find(x => x.id === cls.id)!
+                    for (const st of c.students ?? []) {
+                      const has = c.groups.some(k => k.parent === g.id && k.students?.includes(st.id))
+                      if (v === '-' ? has : !has) setStudentTeacher(d as Project, cls.id, g.id, st.id, v === '-' ? '' : v)
+                    }
+                    prunePlacements(d)
+                  })}>
+                  <option value="">{t('All students…')}</option>
+                  {teacherOptions(g.subjectId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  <option value="-">{t('Clear all')}</option>
+                </select>
+              </th>
+            ))}</tr></thead>
             <tbody>
               {cls.students.map(st => (
                 <tr key={st.id}>

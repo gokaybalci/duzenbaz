@@ -433,4 +433,7 @@ export const tr: Record<string, string> = {
   'Subject…': 'Ders…',
   'Choose the subject of this group first': 'Önce bu grubun dersini seçin',
   'Group': 'Grup',
+  'All students': 'Tüm öğrenciler',
+  'All students…': 'Tümüne ata…',
+  'Clear all': 'Hepsini temizle',
 }
