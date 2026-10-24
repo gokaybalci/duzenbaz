@@ -12,7 +12,6 @@ export type Subject = Entity
 
 export interface Teacher extends Entity {
   maxPerDay: number
-  maxDays: number
   maxGapsPerDay: number
   subjectIds?: string[]
 }
@@ -381,7 +380,7 @@ export function parseStudents(text: string, classes: SchoolClass[]) {
   const byKey = new Map(classes.flatMap(c => [[classKey(c.name), c.id], [classKey(c.short), c.id]] as [string, string][]))
   const out: { classId: string | null; className: string; no: string; name: string }[] = []
   for (const line of text.split(/\r?\n/)) {
-    const cells = line.split(line.includes('\t') ? '\t' : /[;,]/).map(x => x.trim()).filter(Boolean)
+    const cells = line.split(line.includes('\t') ? '\t' : /[;,](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/""/g, '"').trim()).filter(Boolean)
     if (!cells.length || cells.some(x => HEADER.test(x.toLocaleUpperCase('tr')))) continue
     let classId: string | null = null, className = '', no = ''
     const rest: string[] = []
@@ -395,6 +394,23 @@ export function parseStudents(text: string, classes: SchoolClass[]) {
     if (name) out.push({ classId, className, no, name })
   }
   return out
+}
+
+export function importStudents(p: Project, text: string, intoClassId?: string) {
+  let added = 0, skipped = 0
+  for (const r of parseStudents(text, p.classes)) {
+    let c = r.classId ? p.classes.find(x => x.id === r.classId) : r.className ? p.classes.find(x => x.name === r.className) : p.classes.find(x => x.id === intoClassId)
+    if (!c && r.className) {
+      p.classes.push({ id: newId('c'), name: r.className, short: r.className.slice(0, 4).toLocaleUpperCase('tr'), color: pickColor(p.classes.length), avail: fullGrid(p.days.length, p.periods.length), groups: [] })
+      c = p.classes[p.classes.length - 1]
+    }
+    if (!c) { skipped++; continue }
+    const list = (c.students ??= [])
+    if (list.some(s => (r.no ? s.no === r.no : s.name === r.name))) continue
+    list.push({ id: newId('st'), no: r.no, name: r.name })
+    added++
+  }
+  return { added, skipped }
 }
 
 export function syncGroupLessons(p: Project, classId: string, groupId: string) {
@@ -413,6 +429,22 @@ export function syncGroupLessons(p: Project, classId: string, groupId: string) {
     if (!l) p.lessons.push(l = { id: newId('l'), subjectId: '', teacherIds: [], roomIds: [], classes: [{ classId, groupId: k.id }], split: [], sameDayOk: false, link: '' })
     Object.assign(l, { subjectId: g.subjectId, teacherIds: [k.teacherId!], split: [...(g.split ?? [2])], link: live.length > 1 ? `${c.name} ${g.name}` : '' })
   }
+}
+
+export const isGroupLesson = (p: Project, l: Lesson) =>
+  l.classes.length === 1 && !!p.classes.find(c => c.id === l.classes[0].classId)?.groups.find(g => g.id === l.classes[0].groupId)?.parent
+
+export function syncClassGroups(p: Project, classId: string) {
+  const c = p.classes.find(x => x.id === classId)
+  for (const g of c?.groups.filter(x => !x.parent && c.groups.some(k => k.parent === x.id)) ?? []) syncGroupLessons(p, classId, g.id)
+}
+
+export function removeStudent(p: Project, classId: string, studentId: string) {
+  const c = p.classes.find(x => x.id === classId)
+  if (!c) return
+  c.students = c.students?.filter(s => s.id !== studentId)
+  for (const g of c.groups) if (g.students) g.students = g.students.filter(s => s !== studentId)
+  syncClassGroups(p, classId)
 }
 
 export function setStudentTeacher(p: Project, classId: string, groupId: string, studentId: string, teacherId: string) {

@@ -15,7 +15,7 @@ export interface Progress {
 
 type IssueKind =
   | 'noSlot' | 'teacherClash' | 'roomClash' | 'classClash' | 'sameDay'
-  | 'maxPerDay' | 'maxDays' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap' | 'underload'
+  | 'maxPerDay' | 'maxGaps' | 'linkMismatch' | 'overload' | 'classGap' | 'underload'
 
 export interface Issue {
   kind: IssueKind
@@ -76,7 +76,6 @@ export class Solver {
   open: Uint8Array
   maxGaps: Int32Array
   maxPerDay: Int32Array
-  maxDays: Int32Array
   leadW: Float64Array
   lgSameDayOk: boolean[] = []
   lgCount: number
@@ -86,8 +85,6 @@ export class Solver {
   occ: Uint16Array
   dayHard: Int32Array
   daySoft: Float64Array
-  dayUsed: Uint8Array
-  usedCnt: Int32Array
   lgDay: Uint16Array
   lgHard: Int32Array
   lgSoft: Float64Array
@@ -104,18 +101,18 @@ export class Solver {
   constructor(p: Project) {
     const D = (this.D = p.days.length), P = (this.P = p.periods.length), S = (this.S = D * P)
     const resIdx = new Map<string, number>()
-    const gapW: number[] = [], maxGaps: number[] = [], maxPerDay: number[] = [], maxDays: number[] = [], leadW: number[] = []
+    const gapW: number[] = [], maxGaps: number[] = [], maxPerDay: number[] = [], leadW: number[] = []
     const resAvail: string[] = []
     const caps: number[] = []
-    const addRes = (key: string, name: string, type: number, avail: string, g: number, mg: number, mpd: number, md: number, lw: number) => {
+    const addRes = (key: string, name: string, type: number, avail: string, g: number, mg: number, mpd: number, lw: number) => {
       resIdx.set(key, this.resName.length)
       this.resName.push(name); this.resType.push(type); resAvail.push(avail); caps.push(1)
-      gapW.push(g); maxGaps.push(mg); maxPerDay.push(mpd); maxDays.push(md); leadW.push(lw)
+      gapW.push(g); maxGaps.push(mg); maxPerDay.push(mpd); leadW.push(lw)
     }
     const w = p.weights
     for (const t of p.teachers)
-      addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, 0, 0)
-    for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
+      addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, 0)
+    for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
     const groupAtoms = new Map<string, number[]>()
     const cellOf = new Map<number, { cls: string; name: string; groups: string[]; total: number }>()
@@ -124,7 +121,7 @@ export class Solver {
       const atoms: number[] = []
       for (const cell of classCells(c)) {
         const key = 'c:' + c.id + (cell.key ? ':' + cell.key : '')
-        addRes(key, cell.groups.length ? `${c.name} (${cell.groups.map(g => gName.get(g)).join(' + ')})` : c.name, RES_CLASS, c.avail, w.classGap, -1, 0, 0, w.classLateStart)
+        addRes(key, cell.groups.length ? `${c.name} (${cell.groups.map(g => gName.get(g)).join(' + ')})` : c.name, RES_CLASS, c.avail, w.classGap, -1, 0, w.classLateStart)
         const i = resIdx.get(key)!
         atoms.push(i)
         cellOf.set(i, { cls: c.id, name: c.name, groups: cell.groups.map(g => gName.get(g) ?? g), total: 0 })
@@ -136,7 +133,7 @@ export class Solver {
     const R = this.resName.length
     this.cap = Int32Array.from(caps)
     this.gapW = Float64Array.from(gapW); this.maxGaps = Int32Array.from(maxGaps)
-    this.maxPerDay = Int32Array.from(maxPerDay); this.maxDays = Int32Array.from(maxDays); this.leadW = Float64Array.from(leadW)
+    this.maxPerDay = Int32Array.from(maxPerDay); this.leadW = Float64Array.from(leadW)
     this.compact = Uint8Array.from(this.resType.map(t => (t === RES_CLASS && p.strictClasses !== false ? 1 : 0)))
     this.open = new Uint8Array(R * S)
     for (let r = 0; r < R; r++) for (let s = 0; s < S; s++) this.open[r * S + s] = resAvail[r][s] !== '0' && p.avail[s] !== '0' ? 1 : 0
@@ -237,8 +234,6 @@ export class Solver {
     this.occ = new Uint16Array(R * S)
     this.dayHard = new Int32Array(R * D)
     this.daySoft = new Float64Array(R * D)
-    this.dayUsed = new Uint8Array(R * D)
-    this.usedCnt = new Int32Array(R)
     this.lgDay = new Uint16Array(this.lgCount * D)
     this.lgHard = new Int32Array(this.lgCount)
     this.lgSoft = new Float64Array(this.lgCount)
@@ -289,22 +284,12 @@ export class Solver {
 
   rowEval(r: number, d: number) {
     this.dayStats(r, d)
-    const hours = this.dsHours
     const [hard, soft] = this.dayCost(r)
     const i = r * this.D + d
     this.hard += hard - this.dayHard[i]
     this.soft += soft - this.daySoft[i]
     this.dayHard[i] = hard
     this.daySoft[i] = soft
-    const used = hours ? 1 : 0
-    if (used !== this.dayUsed[i]) {
-      const md = this.maxDays[r]
-      const before = md > 0 && this.usedCnt[r] > md ? this.usedCnt[r] - md : 0
-      this.dayUsed[i] = used
-      this.usedCnt[r] += used ? 1 : -1
-      const after = md > 0 && this.usedCnt[r] > md ? this.usedCnt[r] - md : 0
-      this.hard += after - before
-    }
   }
 
   lgEval(lg: number) {
@@ -527,14 +512,11 @@ export class Solver {
     const D = this.D
     let hard = 0, soft = 0
     for (let r = 0; r < this.resName.length; r++) {
-      let days = 0
       for (let d = 0; d < D; d++) {
         this.dayStats(r, d)
-        if (this.dsHours) days++
         const [h, so] = this.dayCost(r)
         hard += h; soft += so
       }
-      if (this.maxDays[r] > 0 && days > this.maxDays[r]) hard += days - this.maxDays[r]
     }
     for (let lg = 0; lg < this.lgCount; lg++)
       for (let d = 0; d < D; d++) {
@@ -560,7 +542,6 @@ export class Solver {
     let classGaps = 0, teacherGaps = 0
     const clashKind: IssueKind[] = ['teacherClash', 'roomClash', 'classClash']
     for (let r = 0; r < this.resName.length; r++) {
-      let days = 0
       for (let d = 0; d < D; d++) {
         let hours = 0
         for (let p = 0; p < P; p++) {
@@ -576,7 +557,6 @@ export class Solver {
           }
         }
         if (!hours) continue
-        days++
         this.dayStats(r, d)
         const gaps = this.dsGaps
         if (this.resType[r] === RES_CLASS) classGaps += gaps + this.dsLead
@@ -585,7 +565,6 @@ export class Solver {
         if (this.maxGaps[r] >= 0 && gaps > this.maxGaps[r]) issues.push({ kind: 'maxGaps', who: this.resName[r], day: d, detail: `${gaps} > ${this.maxGaps[r]}` })
         if (this.maxPerDay[r] > 0 && hours > this.maxPerDay[r]) issues.push({ kind: 'maxPerDay', who: this.resName[r], day: d, detail: `${hours} > ${this.maxPerDay[r]}` })
       }
-      if (this.maxDays[r] > 0 && days > this.maxDays[r]) issues.push({ kind: 'maxDays', who: this.resName[r], detail: `${days} > ${this.maxDays[r]}` })
     }
     for (let lg = 0; lg < this.lgCount; lg++) {
       if (this.lgSameDayOk[lg]) continue

@@ -90,7 +90,7 @@ export function demoProject({ classes, teachers, withRooms = false }: DemoOption
     let short = `${first[0]}. ${last}`
     if (shorts.has(short)) short = `${first.slice(0, 2)}. ${last}`
     shorts.add(short)
-    const t = { id: 't' + i, name: `${first} ${last}`, short, color: pickColor(i), avail: fullGrid(D, P), maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 }
+    const t = { id: 't' + i, name: `${first} ${last}`, short, color: pickColor(i), avail: fullGrid(D, P), maxPerDay: 0, maxGapsPerDay: -1 }
     p.teachers.push(t)
     return t
   }

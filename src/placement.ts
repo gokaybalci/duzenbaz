@@ -29,7 +29,7 @@ export function slotStatuses(p: Project, idx: TTIndex, id: string): SlotStatus[]
     l.classes.forEach(c => { const x = cla.get(c.classId); if (x) grids.push(x.avail) })
   }
   const own = new Set(group)
-  const busy = (cards: { cardId: string; groupId: string | null }[], hit = (_: string | null) => true) =>
+  const busy = (cards: { cardId: string; groupId: string | null }[], hit: (g: string | null) => boolean = () => true) =>
     cards.some(c => !own.has(c.cardId) && hit(c.groupId))
   const out: SlotStatus[] = new Array(S).fill('closed')
   for (let d = 0; d < p.days.length; d++)

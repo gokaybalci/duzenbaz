@@ -18,7 +18,7 @@ const addMinutes = (hhmm: string, m: number) => {
 }
 
 const entity = (name: string, short: string, color: string, avail: string): Entity => ({ id: '', name: name.trim(), short: short.trim(), color, avail })
-const teacher = (e: Entity) => ({ ...e, maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 })
+const teacher = (e: Entity) => ({ ...e, maxPerDay: 0, maxGapsPerDay: -1 })
 
 function fromBinary(v: DataView): Project {
   let o = 0

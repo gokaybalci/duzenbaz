@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { addMandatorySubjects, emptyProject, fileName, fillTeachers, MANDATORY_SUBJECTS, parseStudents } from '../src/model'
+import { addMandatorySubjects, emptyProject, fileName, fillTeachers, importStudents, MANDATORY_SUBJECTS, parseStudents } from '../src/model'
 import { demoProject } from '../src/demo'
 import { migrate } from '../src/store'
 import { buildSheet, fillMonth } from '../src/duty'
@@ -9,7 +9,7 @@ assert.equal(addMandatorySubjects(p, 'ortaokul'), MANDATORY_SUBJECTS.ortaokul.le
 assert.equal(addMandatorySubjects(p, 'ortaokul'), 0, 'second run adds nothing')
 assert.equal(new Set(p.subjects.map(s => s.name)).size, p.subjects.length)
 assert.ok(p.subjects.some(s => s.name === 'BİLİŞİM TEKNOLOJİLERİ VE YAZILIM'), 'names are upper-case with Turkish İ')
-assert.equal(migrate({ ...emptyProject(), teachers: [{ ...p.subjects[0], name: 'ayşe yılmaz', maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 }] }).teachers[0].name, 'AYŞE YILMAZ')
+assert.equal(migrate({ ...emptyProject(), teachers: [{ ...p.subjects[0], name: 'ayşe yılmaz', maxPerDay: 0, maxGapsPerDay: -1 }] }).teachers[0].name, 'AYŞE YILMAZ')
 
 const q = emptyProject()
 q.subjects.push({ ...p.subjects[0], id: 'x', name: ' MATEMATİK ' }, { ...p.subjects[0], id: 'y', name: 'İngilizce' })
@@ -70,5 +70,14 @@ f.teachers[0].subjectIds = [mat, tur]
 assert.equal(fillTeachers(f), 0, 'lessons that already have a teacher are never changed')
 
 assert.ok(['ÇALGI EĞİTİMİ (KEMAN)', 'TSM ÇALGI EĞİTİMİ (KEMAN)', 'İKİNCİ YABANCI DİL (ALMANCA)', 'KORO', 'ORKESTRA'].every(n => gsl.subjects.some(x => x.name === n)), 'multi-subject entries are separate subjects')
+
+assert.deepEqual(parseStudents('9-A,12,"YILMAZ, ALİ"\n9-A;13;"Ece ""Su"" Kaya"', cls).map(r => r.name), ['YILMAZ, ALİ', 'ECE "SU" KAYA'], 'quoted CSV fields keep their commas and lose their quotes')
+
+const im = emptyProject()
+im.classes.push({ id: 'a', name: '9-A', short: '9A', color: '', avail: '', groups: [] })
+assert.deepEqual(importStudents(im, '9/A\t1\tAli\n10-B\t2\tCan\n3\tDeniz\n9-A\t1\tAli Tekrar'), { added: 2, skipped: 1 }, 'a row without a class is skipped when no class is chosen; the same number is not added twice')
+assert.deepEqual(im.classes.map(c => [c.name, c.students?.map(s => s.name)]), [['9-A', ['ALİ']], ['10-B', ['CAN']]], 'known classes are matched, new ones created')
+assert.deepEqual(importStudents(im, '4\tEce', 'a'), { added: 1, skipped: 0 })
+assert.equal(im.classes[0].students!.at(-1)!.name, 'ECE', 'inside a class window rows without a class go to that class')
 
 console.log('subjects-check ok')

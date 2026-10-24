@@ -12,7 +12,7 @@ function school(groups: boolean): Project {
   const ent = (name: string) => ({ id: newId('x'), name, short: name, color: '#888', avail: grid })
   const P = p.periods.length
   const teacher = (name: string, dayOff = -1): Teacher => {
-    const t = { ...ent(name), avail: grid.split('').map((x, i) => (Math.floor(i / P) === dayOff ? '0' : x)).join(''), maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 }
+    const t = { ...ent(name), avail: grid.split('').map((x, i) => (Math.floor(i / P) === dayOff ? '0' : x)).join(''), maxPerDay: 0, maxGapsPerDay: -1 }
     p.teachers.push(t)
     return t
   }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon, type IconName } from '../icons'
 import { t } from '../i18n'
-import { fillTeachers, newId, parseSplit, parseStudents, pickColor, setStudentTeacher, splitLabel, syncGroupLessons, teachersOf, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
+import { fillTeachers, importStudents, newId, removeStudent, syncClassGroups, parseSplit, pickColor, setStudentTeacher, splitLabel, syncGroupLessons, teachersOf, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
 import { AvailabilityEditor, ChipSelect, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
@@ -31,7 +31,7 @@ function makeEntity(key: EntityKey, p: Project, name: string, short?: string): E
     id: newId(key[0]), name, short: short || autoShort(name), color: pickColor(p[key].length + (key === 'teachers' ? 3 : 0)),
     avail: '1'.repeat(p.days.length * p.periods.length),
   }
-  if (key === 'teachers') return { ...base, maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 } as Teacher
+  if (key === 'teachers') return { ...base, maxPerDay: 0, maxGapsPerDay: -1 } as Teacher
   if (key === 'classes') return { ...base, groups: [] } as SchoolClass
   if (key === 'rooms') return { ...base, capacity: 1 } as Room
   return base
@@ -120,7 +120,11 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
     update(d => {
       if (entity === 'teachers') return removeTeacher(d, e.id)
       ;(d[entity] as Entity[]).splice((d[entity] as Entity[]).findIndex(x => x.id === e.id), 1)
-      if (entity === 'subjects') { d.lessons = d.lessons.filter(l => l.subjectId !== e.id); d.teachers.forEach(x => { if (x.subjectIds) x.subjectIds = x.subjectIds.filter(s => s !== e.id) }) }
+      if (entity === 'subjects') {
+        d.lessons = d.lessons.filter(l => l.subjectId !== e.id)
+        d.teachers.forEach(x => { if (x.subjectIds) x.subjectIds = x.subjectIds.filter(s => s !== e.id) })
+        for (const c of d.classes) { for (const g of c.groups) if (g.subjectId === e.id) delete g.subjectId; syncClassGroups(d as Project, c.id) }
+      }
       if (entity === 'rooms') d.lessons.forEach(l => { l.roomIds = l.roomIds.filter(x => x !== e.id) })
       if (entity === 'classes') {
         d.lessons.forEach(l => { l.classes = l.classes.filter(c => c.classId !== e.id) })
@@ -351,26 +355,11 @@ function StudentsModal({ cls, onClose }: { cls?: SchoolClass; onClose: () => voi
   const [text, setText] = useState('')
   const add = () => {
     let added = 0, skipped = 0
-    update(d => {
-      for (const r of parseStudents(text, d.classes as SchoolClass[])) {
-        let c = d.classes.find(x => x.id === (r.classId ?? (r.className ? null : cls?.id)) || (!r.classId && r.className && x.name === r.className))
-        if (!c && r.className) { d.classes.push(makeEntity('classes', d as Project, r.className) as SchoolClass); c = d.classes[d.classes.length - 1] }
-        if (!c) { skipped++; continue }
-        const list = (c.students ??= [])
-        if (list.some(s => (r.no ? s.no === r.no : s.name === r.name))) continue
-        list.push({ id: newId('st'), no: r.no, name: r.name })
-        added++
-      }
-    })
+    update(d => { ({ added, skipped } = importStudents(d as Project, text, cls?.id)) })
     toast(t('{n} added', { n: added }) + (skipped ? ' · ' + t('{n} rows without a class skipped', { n: skipped }) : ''))
     setText('')
   }
-  const remove = (id: string) => update(d => {
-    const c = d.classes.find(x => x.id === cls!.id)
-    if (!c) return
-    c.students = c.students?.filter(s => s.id !== id)
-    for (const g of c.groups) if (g.students) g.students = g.students.filter(s => s !== id)
-  })
+  const remove = (id: string) => update(d => { removeStudent(d as Project, cls!.id, id); prunePlacements(d) })
   return (
     <Modal title={cls ? <>{t('Students')}: {cls.name}</> : t('Paste student list')} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>{t('Done')}</button><button className="btn primary" disabled={!text.trim()} onClick={add}>{t('Add')}</button></>}>

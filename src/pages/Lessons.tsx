@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
 import { t } from '../i18n'
-import { defaultSplit, fillTeachers, lessonHours, teachersOf, newId, parseSplit, splitLabel, type ClassRef, type Lesson, type Project } from '../model'
+import { defaultSplit, fillTeachers, isGroupLesson, lessonHours, teachersOf, newId, parseSplit, splitLabel, type ClassRef, type Lesson, type Project } from '../model'
 import { prunePlacements, update, useProject } from '../store'
 import { classLabel, loadOf, names } from '../timetable'
 import { ChipSelect, Empty, Modal, PageTitle, toast } from '../ui'
@@ -143,7 +143,8 @@ export function LessonsPage() {
               setEditing(null)
             }}>{t('Save')}</button>
           </>}>
-          <LessonForm p={p} value={editing} onChange={setEditing} />
+          {isGroupLesson(p, editing) && <p className="hint" style={{ marginTop: 0 }}>{t('This lesson belongs to a student group. Change its subject, teacher and hours in Classes → Groups.')}</p>}
+          <fieldset disabled={isGroupLesson(p, editing)} style={{ border: 0, padding: 0, margin: 0 }}><LessonForm p={p} value={editing} onChange={setEditing} /></fieldset>
         </Modal>
       )}
       {copyOf && <CopyLessons p={p} lessons={copyOf} onClose={() => { setCopyOf(null); setSel(new Set()) }} />}
@@ -275,7 +276,8 @@ function LessonForm({ p, value, onChange }: { p: Project; value: Lesson; onChang
 function CopyLessons({ p, lessons, onClose }: { p: Project; lessons: Lesson[]; onClose: () => void }) {
   const [targets, setTargets] = useState<string[]>([])
   const [keepTeachers, setKeepTeachers] = useState(true)
-  const src = lessons.filter(l => l.classes.length === 1)
+  const managed = lessons.filter(l => isGroupLesson(p, l))
+  const src = lessons.filter(l => l.classes.length === 1 && !managed.includes(l))
   const from = new Set(src.map(l => l.classes[0].classId))
   return (
     <Modal title={t('Copy lessons to other classes')} onClose={onClose}
@@ -296,7 +298,7 @@ function CopyLessons({ p, lessons, onClose }: { p: Project; lessons: Lesson[]; o
           onClose()
         }}>{t('Copy {n} lessons', { n: src.length * targets.length })}</button>
       </>}>
-      <p className="hint" style={{ marginTop: 0 }}>{t('Copies {n} single-class lessons.', { n: src.length })}{src.length < lessons.length && ' ' + t('{n} lessons shared by several classes are skipped.', { n: lessons.length - src.length })}</p>
+      <p className="hint" style={{ marginTop: 0 }}>{t('Copies {n} single-class lessons.', { n: src.length })}{src.length + managed.length < lessons.length && ' ' + t('{n} lessons shared by several classes are skipped.', { n: lessons.length - src.length - managed.length })}{managed.length > 0 && ' ' + t('{n} student group lessons are skipped; set them in the Groups window of each class.', { n: managed.length })}</p>
       <div className="row" style={{ maxHeight: 260, overflow: 'auto' }}>
         {p.classes.filter(c => !from.has(c.id)).map(c => (
           <label key={c.id} className="check chip"><input type="checkbox" checked={targets.includes(c.id)} onChange={e => setTargets(e.target.checked ? [...targets, c.id] : targets.filter(x => x !== c.id))} />{c.name}</label>

@@ -112,7 +112,7 @@ export function DutyTeachersPage() {
     update(d => {
       d.teachers.push({
         id: newId('t'), name: n, short: n.split(/\s+/).map(w => w[0]).join(''), color: pickColor(d.teachers.length + 3),
-        avail: '1'.repeat(d.days.length * d.periods.length), maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1,
+        avail: '1'.repeat(d.days.length * d.periods.length), maxPerDay: 0, maxGapsPerDay: -1,
       })
     })
     setName('')

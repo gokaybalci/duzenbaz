@@ -18,7 +18,6 @@ const ISSUE_TEXT: Record<Issue['kind'], string> = {
   classClash: 'Class double-booked',
   sameDay: 'Two blocks of the same lesson on one day',
   maxPerDay: 'Too many hours in a day',
-  maxDays: 'Too many days in the week',
   maxGaps: 'Too many gaps in a day',
   linkMismatch: 'Parallel-linked lessons have different blocks',
   overload: 'More lesson hours than available slots',

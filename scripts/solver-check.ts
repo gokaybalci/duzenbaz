@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { demoProject } from '../src/demo'
-import { cardId, setStudentTeacher, classCells, emptyProject, fullGrid, newId, type Project, type SchoolClass } from '../src/model'
+import { cardId, isGroupLesson, removeStudent, setStudentTeacher, classCells, emptyProject, fullGrid, newId, type Project, type SchoolClass } from '../src/model'
 import { evaluate, solve, Solver } from '../src/solver/engine'
 import { buildIndex } from '../src/timetable'
+import { removeTeacher } from '../src/store'
 
 const p = demoProject({ classes: 12 })
 const r = solve(p, { timeLimitMs: 3000, seed: 1, keepPlacements: false })
@@ -49,7 +50,7 @@ assert.ok(evaluate(q).issues.some(i => i.kind === 'teacherClash'), 'the solver r
 const g: Project = emptyProject()
 const S = g.days.length * g.periods.length
 const ent = (name: string) => ({ id: newId('x'), name, short: name, color: '#888', avail: fullGrid(g.days.length, g.periods.length) })
-const tea = (name: string) => ({ ...ent(name), maxPerDay: 0, maxDays: 0, maxGapsPerDay: -1 })
+const tea = (name: string) => ({ ...ent(name), maxPerDay: 0, maxGapsPerDay: -1 })
 g.subjects.push(ent('TDE'), ent('PİY'), ent('KOR'))
 g.teachers.push(tea('X'), tea('T1'), tea('T2'), tea('T3'), tea('T4'), tea('T5'), tea('Y'))
 const k: SchoolClass = { ...ent('9-A'), groups: [], students: [1, 2, 3, 4, 5, 6].map(i => ({ id: 's' + i, no: String(i), name: 'Ö' + i })) }
@@ -114,4 +115,14 @@ for (const sv of [one, new Solver(demoProject({ classes: 6 }))]) {
   const full = sv.parts()
   assert.ok(full.hard === sv.hard + sv.unplaced && Math.abs(full.soft - sv.soft) < 1e-6, 'the running score always matches a full recount')
 }
+// Deleting a student or teacher never leaves a group lesson without students or without a teacher.
+const del = structuredClone(g)
+const dk = del.classes[0]
+const lonely = dk.groups.find(x => x.parent === 'piy' && x.students!.length === 1)!
+removeStudent(del, dk.id, lonely.students![0])
+assert.ok(!dk.groups.some(x => x.id === lonely.id) && !del.lessons.some(l => l.classes[0].groupId === lonely.id), 'the last student of a teacher takes the lesson with them')
+removeTeacher(del, g.teachers[1].id)
+assert.ok(del.lessons.every(l => l.teacherIds.length) && !dk.groups.some(x => x.teacherId === g.teachers[1].id), 'a deleted teacher takes their group lessons with them')
+assert.ok(!evaluate(del).issues.some(i => i.kind === 'underload' && i.who.includes('·')), 'no empty teacher group is reported')
+assert.ok(isGroupLesson(g, piano[0]) && !isGroupLesson(g, g.lessons[0]), 'group lessons are told apart from whole-class lessons')
 console.log('solver-check ok')

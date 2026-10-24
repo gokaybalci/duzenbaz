@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { produce, type Draft } from 'immer'
-import { emptyProject, resizeGrid, upperName, type Project } from './model'
+import { emptyProject, resizeGrid, syncClassGroups, upperName, type Project } from './model'
 import { native } from './native'
 
 const KEY = 'duzenbaz.project.v1'
@@ -25,7 +25,7 @@ export function migrate(p: Partial<Project>): Project {
   for (const list of [out.subjects, out.teachers, out.rooms, out.classes]) for (const e of list) e.avail = fix(e.avail)
   for (const c of out.classes) c.groups ??= []
   for (const r of out.rooms) r.capacity ??= 1
-  for (const t of out.teachers) { t.maxPerDay ??= 0; t.maxDays ??= 0; t.maxGapsPerDay ??= -1 }
+  for (const t of out.teachers) { t.maxPerDay ??= 0; t.maxGapsPerDay ??= -1 }
   for (const l of out.lessons) { l.link ??= ''; l.sameDayOk ??= false; l.roomIds ??= [] }
   out.placements ??= {}
   out.duty = { ...base.duty, ...p.duty }
@@ -136,6 +136,10 @@ export function setTimeShape(days: string[], periods: Project['periods']) {
 export function removeTeacher(d: Draft<Project>, id: string) {
   d.teachers = d.teachers.filter(x => x.id !== id)
   d.lessons.forEach(l => { l.teacherIds = l.teacherIds.filter(x => x !== id) })
+  for (const c of d.classes) {
+    for (const k of c.groups) if (k.parent && k.teacherId === id) k.students = []
+    syncClassGroups(d as Project, c.id)
+  }
   prunePlacements(d)
   for (const m of [d.duty.role, d.duty.days, d.duty.manual, d.duty.consecutive, d.duty.prefer, d.duty.fixed, d.duty.shift]) delete m[id]
   for (const [date, row] of Object.entries(d.duty.assign))
