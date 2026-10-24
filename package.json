@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "bench": "tsx scripts/bench.ts",
+    "bench:gsl": "tsx scripts/bench-gsl.ts",
     "check:duty": "tsx scripts/duty-check.ts",
     "check:subjects": "tsx scripts/subjects-check.ts",
     "check:solver": "tsx scripts/solver-check.ts",
