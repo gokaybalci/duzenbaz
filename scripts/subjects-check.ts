@@ -48,7 +48,7 @@ const named = (name: string) => ({ ...emptyProject(), school: { name, year: '', 
 assert.deepEqual([fileName(named(' Atatürk Ortaokulu ')), fileName(named('')), fileName(named('?!'), 'okul')], ['Atatürk_Ortaokulu', 'ders_programi', 'okul'], 'file names are cleaned the same way everywhere')
 
 const gsl = emptyProject()
-assert.equal(addMandatorySubjects(gsl, 'guzelsanatlar'), MANDATORY_SUBJECTS.lise.length + 12, 'güzel sanatlar lisesi gets the lise subjects and the art and music subjects')
+assert.equal(addMandatorySubjects(gsl, 'guzelsanatlar'), MANDATORY_SUBJECTS.guzelsanatlar.length, 'güzel sanatlar lisesi gets its common, field and elective subjects')
 
 const cls = [{ id: 'a', name: '9-A', short: '9A', color: '', avail: '', groups: [] }]
 assert.deepEqual(parseStudents('S.No\tSınıf\tÖğrenci No\tAdı Soyadı\n1\t9/A\t123\tali yılmaz\n2\t10-B\t456\tAyşe  Kaya\n\n', cls), [
@@ -68,5 +68,7 @@ assert.ok(filled > 0 && f.lessons.filter(l => l.subjectId === mat).every(l => l.
 assert.ok(f.lessons.filter(l => l.subjectId === tur).every(l => !l.teacherIds.length), 'a subject with two teachers is left for the user to pick')
 f.teachers[0].subjectIds = [mat, tur]
 assert.equal(fillTeachers(f), 0, 'lessons that already have a teacher are never changed')
+
+assert.ok(['ÇALGI EĞİTİMİ (KEMAN)', 'TSM ÇALGI EĞİTİMİ (KEMAN)', 'İKİNCİ YABANCI DİL (ALMANCA)', 'KORO', 'ORKESTRA'].every(n => gsl.subjects.some(x => x.name === n)), 'multi-subject entries are separate subjects')
 
 console.log('subjects-check ok')
