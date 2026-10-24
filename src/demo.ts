@@ -117,10 +117,9 @@ export function demoProject({ classes, teachers, withRooms = false }: DemoOption
 
   const load = (t: Teacher) => lessons.filter(l => l.teacherIds.includes(t.id)).reduce((a, l) => a + l.split.reduce((x, y) => x + y, 0), 0)
   const onlyDays = (days: number[]) => Array.from({ length: D * P }, (_, i) => (days.includes(Math.floor(i / P)) ? '1' : '0')).join('')
-  const [math, mus, art, chess] = [firstOf[0], firstOf[7], firstOf[8], firstOf[SAT]]
+  const [math, mus, art] = [firstOf[0], firstOf[7], firstOf[8]]
   if (mus && load(mus) <= 10) mus.avail = onlyDays([0, 1])
   if (art && load(art) <= 10) art.avail = onlyDays([3, 4])
   if (math && load(math) <= 24) { math.avail = math.avail.split('').map((c, i) => (i % P === 0 ? '0' : c)).join(''); math.maxGapsPerDay = 1 }
-  if (chess && load(chess) <= 12) chess.maxDays = 3
   return p
 }

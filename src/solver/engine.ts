@@ -113,7 +113,7 @@ export class Solver {
     }
     const w = p.weights
     for (const t of p.teachers)
-      addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, t.maxDays || 0, 0)
+      addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, 0, 0)
     for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
     const groupAtoms = new Map<string, number[]>()

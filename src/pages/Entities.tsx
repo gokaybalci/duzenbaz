@@ -158,7 +158,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                 <th style={{ width: 110 }}>{sortHead('short', t('Short'))}</th>
                 <th style={{ width: 90 }}>{t('Availability')}</th>
                 {entity === 'teachers' && <th title={t('Subjects this teacher teaches. If a subject has only one teacher, new lessons of it get that teacher automatically.')}>{t('Teaches')}</th>}
-                {entity === 'teachers' && <><th className="num" title={t('Max hours per day (0 = no limit)')}>{t('Max/day')}</th><th className="num" title={t('Max days per week (0 = no limit)')}>{t('Max days')}</th><th className="num" title={t('Max idle periods per day (empty = no limit)')}>{t('Max gaps/day')}</th></>}
+                {entity === 'teachers' && <><th className="num" title={t('Max hours per day (0 = no limit)')}>{t('Max/day')}</th><th className="num" title={t('Max idle periods per day (empty = no limit)')}>{t('Max gaps/day')}</th></>}
                 {entity === 'classes' && <><th className="num">{t('Students')}</th><th>{t('Groups')}</th></>}
                 {entity === 'rooms' && <th className="num" title={t('How many identical rooms of this kind the school has (e.g. 2 gyms). A lesson needs any one of them.')}>{t('Quantity')}</th>}
                 <th className="num">{sortHead('hours', entity === 'subjects' ? t('Total hours') : t('Hours / open'))}</th>
@@ -184,7 +184,6 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                       const tt = e as Teacher
                       return <>
                         <td className="num"><input type="number" min={0} value={tt.maxPerDay || ''} placeholder="–" onChange={ev => edit(e.id, x => { (x as Teacher).maxPerDay = Math.max(0, +ev.target.value || 0) }, 'mpd')} /></td>
-                        <td className="num"><input type="number" min={0} max={p.days.length} value={tt.maxDays || ''} placeholder="–" onChange={ev => edit(e.id, x => { (x as Teacher).maxDays = Math.max(0, +ev.target.value || 0) }, 'md')} /></td>
                         <td className="num"><input type="number" min={0} value={tt.maxGapsPerDay >= 0 ? tt.maxGapsPerDay : ''} placeholder="–" onChange={ev => edit(e.id, x => { (x as Teacher).maxGapsPerDay = ev.target.value === '' ? -1 : Math.max(0, +ev.target.value) }, 'mg')} /></td>
                       </>
                     })()}
