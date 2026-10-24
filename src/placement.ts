@@ -1,4 +1,4 @@
-import { cardId, parseCardId, type Lesson, type Project } from './model'
+import { cardId, groupsOverlap, parseCardId, type Lesson, type Project } from './model'
 import { update } from './store'
 import type { TTIndex } from './timetable'
 
@@ -29,8 +29,8 @@ export function slotStatuses(p: Project, idx: TTIndex, id: string): SlotStatus[]
     l.classes.forEach(c => { const x = cla.get(c.classId); if (x) grids.push(x.avail) })
   }
   const own = new Set(group)
-  const busy = (cards: { cardId: string; groupId: string | null }[], groupId?: string | null) =>
-    cards.some(c => !own.has(c.cardId) && (groupId === undefined || groupId === null || c.groupId === null || c.groupId === groupId))
+  const busy = (cards: { cardId: string; groupId: string | null }[], hit = (_: string | null) => true) =>
+    cards.some(c => !own.has(c.cardId) && hit(c.groupId))
   const out: SlotStatus[] = new Array(S).fill('closed')
   for (let d = 0; d < p.days.length; d++)
     for (let pp = 0; pp + len <= P; pp++) {
@@ -42,7 +42,7 @@ export function slotStatuses(p: Project, idx: TTIndex, id: string): SlotStatus[]
         for (const l of lessons) {
           if (l.teacherIds.some(t => busy(idx.grids.teacher.get(t)?.[s] ?? []))) st = 'bad'
           if (l.roomIds.some(r => (idx.grids.room.get(r)?.[s] ?? []).filter(c => !own.has(c.cardId)).length >= (roo.get(r)?.capacity || 1))) st = 'bad'
-          if (l.classes.some(c => busy(idx.grids.class.get(c.classId)?.[s] ?? [], c.groupId))) st = 'bad'
+          if (l.classes.some(c => busy(idx.grids.class.get(c.classId)?.[s] ?? [], g => groupsOverlap(cla.get(c.classId), c.groupId, g)))) st = 'bad'
         }
       }
       if (st === 'ok') {

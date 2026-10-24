@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon, type IconName } from '../icons'
 import { t } from '../i18n'
-import { newId, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
+import { arrangeByTeacher, newId, parseSplit, parseStudents, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
 import { AvailabilityEditor, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
@@ -71,6 +71,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
   const [newName, setNewName] = useState('')
   const [availFor, setAvailFor] = useState<string | null>(null)
   const [groupsFor, setGroupsFor] = useState<string | null>(null)
+  const [studentsFor, setStudentsFor] = useState<string | null>(null)
   const [paste, setPaste] = useState(false)
   const [sort, setSort] = useState<{ key: 'name' | 'short' | 'hours'; dir: 1 | -1 } | null>(null)
   const list = p[entity] as Entity[]
@@ -138,6 +139,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
         <PageTitle title={t(title)} count={list.length} sub={t(SUBS[entity])} />
         <input placeholder={t('Search…')} value={q} onChange={e => setQ(e.target.value)} style={{ width: 200 }} />
         <button className="btn" onClick={() => setPaste(true)}>{t('Paste list')}</button>
+        {entity === 'classes' && <button className="btn" onClick={() => setStudentsFor('')}>{t('Paste student list')}</button>}
       </div>
       <div className="card pad row">
         <input placeholder={t('New {what} name…', { what: t(singular) })} value={newName} style={{ flex: 1, maxWidth: 360 }}
@@ -156,7 +158,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                 <th style={{ width: 110 }}>{sortHead('short', t('Short'))}</th>
                 <th style={{ width: 90 }}>{t('Availability')}</th>
                 {entity === 'teachers' && <><th className="num" title={t('Max hours per day (0 = no limit)')}>{t('Max/day')}</th><th className="num" title={t('Max days per week (0 = no limit)')}>{t('Max days')}</th><th className="num" title={t('Max idle periods per day (empty = no limit)')}>{t('Max gaps/day')}</th></>}
-                {entity === 'classes' && <th>{t('Groups')}</th>}
+                {entity === 'classes' && <><th className="num">{t('Students')}</th><th>{t('Groups')}</th></>}
                 {entity === 'rooms' && <th className="num" title={t('How many identical rooms of this kind the school has (e.g. 2 gyms). A lesson needs any one of them.')}>{t('Quantity')}</th>}
                 <th className="num">{sortHead('hours', entity === 'subjects' ? t('Total hours') : t('Hours / open'))}</th>
                 <th style={{ width: 50 }}></th>
@@ -184,6 +186,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                       </>
                     })()}
                     {entity === 'rooms' && <td className="num"><input type="number" min={1} max={50} value={(e as Room).capacity || 1} onChange={ev => edit(e.id, x => { (x as Room).capacity = Math.max(1, +ev.target.value || 1) }, 'cap')} /></td>}
+                    {entity === 'classes' && <td className="num"><button className="btn small ghost" onClick={() => setStudentsFor(e.id)}>{(e as SchoolClass).students?.length ?? 0} <Icon n="edit" /></button></td>}
                     {entity === 'classes' && (
                       <td>
                         <button className="btn small ghost" onClick={() => setGroupsFor(e.id)}>
@@ -214,6 +217,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
       )}
 
       {groupsEntity && <GroupsModal cls={groupsEntity} onClose={() => setGroupsFor(null)} />}
+      {studentsFor !== null && <StudentsModal cls={(p.classes as SchoolClass[]).find(e => e.id === studentsFor)} onClose={() => setStudentsFor(null)} />}
 
       {paste && <PasteList entity={entity} onClose={() => setPaste(false)} />}
     </div>
@@ -247,6 +251,7 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
       <p className="hint" style={{ marginTop: 0, maxWidth: 520 }}>
         {t('Split a class into groups when part of the class has a different lesson at the same time (e.g. electives, language groups). Lessons of different groups can run in parallel; a whole-class lesson blocks all groups.')}
       </p>
+      {!!cls.students?.length && <p className="hint" style={{ maxWidth: 520 }}>{t('Tick the students of each group. Groups that share a student never run at the same time.')}</p>}
       <div className="stack">
         {cls.groups.map(g => (
           <div key={g.id} className="row">
@@ -268,6 +273,132 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
           <button className="btn" disabled={!name.trim()} onClick={() => { editCls(c => { c.groups.push({ id: newId('g'), name: name.trim() }) }); setName('') }}>+ {t('Add group')}</button>
         </div>
       </div>
+      {!!cls.students?.length && !!cls.groups.length && (
+        <div className="table-wrap" style={{ marginTop: 12, maxHeight: 320, overflow: 'auto' }}>
+          <table className="data">
+            <thead><tr><th>{t('Student')}</th>{cls.groups.map(g => <th key={g.id} className="num">{g.name}</th>)}</tr></thead>
+            <tbody>
+              {cls.students.map(st => (
+                <tr key={st.id}>
+                  <td>{st.no} {st.name}</td>
+                  {cls.groups.map(g => {
+                    const on = !!g.students?.includes(st.id)
+                    return <td key={g.id} className="num"><input type="checkbox" aria-label={`${st.name} – ${g.name}`} checked={on}
+                      onChange={() => editCls(c => { const x = c.groups.find(y => y.id === g.id)!; x.students = on ? x.students!.filter(y => y !== st.id) : [...(x.students ?? []), st.id] })} /></td>
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!!cls.students?.length && <ArrangeByTeacher cls={cls} />}
+    </Modal>
+  )
+}
+
+function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
+  const p = useProject()
+  const [subjectId, setSubjectId] = useState('')
+  const [splitText, setSplitText] = useState('2')
+  const [size, setSize] = useState(2)
+  const [teacherOf, setTeacherOf] = useState<Record<string, string>>({})
+  const split = parseSplit(splitText)
+  const ready = subjectId && split && Object.values(teacherOf).some(Boolean)
+  return (
+    <details style={{ marginTop: 12 }}>
+      <summary style={{ cursor: 'pointer' }}><b>{t('Group by teacher (e.g. individual instrument)')}</b></summary>
+      <p className="hint" style={{ maxWidth: 520 }}>{t("Pick each student's teacher. Every teacher's students are split into lessons of at most the given size; one lesson of every teacher runs at the same time.")}</p>
+      <div className="row">
+        <label className="field">{t('Subject')}
+          <select value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+            <option value="">{t('Choose…')}</option>
+            {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        <label className="field">{t('Hours')}
+          <input value={splitText} style={{ width: 80, borderColor: split ? undefined : 'var(--danger)' }} onChange={e => setSplitText(e.target.value)} />
+        </label>
+        <label className="field">{t('Students per lesson')}
+          <input type="number" min={1} max={30} value={size} style={{ width: 80 }} onChange={e => setSize(Math.max(1, +e.target.value || 1))} />
+        </label>
+      </div>
+      <div className="table-wrap" style={{ marginTop: 8, maxHeight: 260, overflow: 'auto' }}>
+        <table className="data">
+          <tbody>
+            {cls.students!.map(st => (
+              <tr key={st.id}>
+                <td>{st.no} {st.name}</td>
+                <td>
+                  <select aria-label={st.name} value={teacherOf[st.id] ?? ''} onChange={e => setTeacherOf({ ...teacherOf, [st.id]: e.target.value })}>
+                    <option value="">–</option>
+                    {p.teachers.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button className="btn primary" style={{ marginTop: 8 }} disabled={!ready} onClick={() => {
+        let n = 0
+        update(d => { n = arrangeByTeacher(d as Project, cls.id, subjectId, split!, size, teacherOf) })
+        toast(t('{n} groups and lessons created', { n }))
+        setTeacherOf({})
+      }}>{t('Create groups and lessons')}</button>
+    </details>
+  )
+}
+
+function StudentsModal({ cls, onClose }: { cls?: SchoolClass; onClose: () => void }) {
+  const [text, setText] = useState('')
+  const add = () => {
+    let added = 0, skipped = 0
+    update(d => {
+      for (const r of parseStudents(text, d.classes as SchoolClass[])) {
+        let c = d.classes.find(x => x.id === (r.classId ?? (r.className ? null : cls?.id)) || (!r.classId && r.className && x.name === r.className))
+        if (!c && r.className) { d.classes.push(makeEntity('classes', d as Project, r.className) as SchoolClass); c = d.classes[d.classes.length - 1] }
+        if (!c) { skipped++; continue }
+        const list = (c.students ??= [])
+        if (list.some(s => (r.no ? s.no === r.no : s.name === r.name))) continue
+        list.push({ id: newId('st'), no: r.no, name: r.name })
+        added++
+      }
+    })
+    toast(t('{n} added', { n: added }) + (skipped ? ' · ' + t('{n} rows without a class skipped', { n: skipped }) : ''))
+    setText('')
+  }
+  const remove = (id: string) => update(d => {
+    const c = d.classes.find(x => x.id === cls!.id)
+    if (!c) return
+    c.students = c.students?.filter(s => s.id !== id)
+    for (const g of c.groups) if (g.students) g.students = g.students.filter(s => s !== id)
+  })
+  return (
+    <Modal title={cls ? <>{t('Students')}: {cls.name}</> : t('Paste student list')} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>{t('Done')}</button><button className="btn primary" disabled={!text.trim()} onClick={add}>{t('Add')}</button></>}>
+      {!!cls?.students?.length && (
+        <div className="table-wrap" style={{ maxHeight: 260, overflow: 'auto', marginBottom: 12 }}>
+          <table className="data">
+            <thead><tr><th className="num">{t('No')}</th><th>{t('Name')}</th><th>{t('Groups')}</th><th style={{ width: 50 }}></th></tr></thead>
+            <tbody>
+              {cls.students.map(st => (
+                <tr key={st.id}>
+                  <td className="num">{st.no}</td>
+                  <td>{st.name}</td>
+                  <td className="hint">{cls.groups.filter(g => g.students?.includes(st.id)).map(g => g.name).join(', ')}</td>
+                  <td><button className="btn ghost small danger" onClick={() => remove(st.id)} title={t('Delete')}><Icon n="trash" /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="hint" style={{ marginTop: 0, maxWidth: 520 }}>
+        {t('Paste from Excel or a CSV file, one student per row. Columns may be class, number and name in any order; header rows are skipped.')}
+        {' '}{cls ? t('Rows without a class column go to this class.') : t('Classes that do not exist yet are created.')}
+      </p>
+      <textarea rows={10} style={{ width: '100%' }} value={text} onChange={e => setText(e.target.value)} autoFocus />
     </Modal>
   )
 }

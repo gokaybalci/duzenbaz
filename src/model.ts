@@ -20,13 +20,21 @@ export interface Room extends Entity {
   capacity: number
 }
 
+export interface Student {
+  id: string
+  no: string
+  name: string
+}
+
 interface ClassGroup {
   id: string
   name: string
+  students?: string[]
 }
 
 export interface SchoolClass extends Entity {
   groups: ClassGroup[]
+  students?: Student[]
 }
 
 export interface ClassRef {
@@ -117,8 +125,8 @@ export interface Duty {
   hoursWeight: number
 }
 
-export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise'
-export const SCHOOL_TYPES: [SchoolType, string][] = [['ilkokul', 'İlkokul'], ['ortaokul', 'Ortaokul'], ['lise', 'Lise']]
+export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise' | 'guzelsanatlar'
+export const SCHOOL_TYPES: [SchoolType, string][] = [['ilkokul', 'İlkokul'], ['ortaokul', 'Ortaokul'], ['lise', 'Lise'], ['guzelsanatlar', 'Güzel Sanatlar Lisesi']]
 
 export const cardId = (lessonId: string, part: number) => `${lessonId}#${part}`
 
@@ -175,6 +183,24 @@ export function emptyProject(): Project {
 
 const LANG = ['İngilizce', 'Almanca', 'Fransızca', 'Arapça', '1. Yabancı Dil']
 
+const LISE: [string, string, string[]][] = [
+    ['Türk Dili ve Edebiyatı', 'TDE', ['Edebiyat', 'Türk Edebiyatı']],
+    ['Matematik', 'MAT', []],
+    ['Tarih', 'TAR', []],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
+    ['Coğrafya', 'COĞ', []],
+    ['Fizik', 'FİZ', []],
+    ['Kimya', 'KİM', []],
+    ['Biyoloji', 'BİY', []],
+    ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
+    ['Yabancı Dil', 'YDL', LANG],
+    ['Felsefe', 'FEL', []],
+    ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
+    ['Görsel Sanatlar', 'GÖR', ['Resim']],
+    ['Müzik', 'MÜZ', []],
+    ['Sağlık Bilgisi ve Trafik Kültürü', 'SBT', []],
+]
+
 export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string, string[]][]> = {
   ilkokul: [
     ['Türkçe', 'TÜR', []],
@@ -205,22 +231,21 @@ export const MANDATORY_SUBJECTS: Record<Exclude<SchoolType, ''>, [string, string
     ['Bilişim Teknolojileri ve Yazılım', 'BİL', ['Bilişim Teknolojileri']],
     ['Teknoloji ve Tasarım', 'TTS', []],
   ],
-  lise: [
-    ['Türk Dili ve Edebiyatı', 'TDE', ['Edebiyat', 'Türk Edebiyatı']],
-    ['Matematik', 'MAT', []],
-    ['Tarih', 'TAR', []],
-    ['T.C. İnkılap Tarihi ve Atatürkçülük', 'İNK', ['İnkılap Tarihi', 'İnkılap Tarihi ve Atatürkçülük']],
-    ['Coğrafya', 'COĞ', []],
-    ['Fizik', 'FİZ', []],
-    ['Kimya', 'KİM', []],
-    ['Biyoloji', 'BİY', []],
-    ['Din Kültürü ve Ahlak Bilgisi', 'DİN', ['Din Kültürü']],
-    ['Yabancı Dil', 'YDL', LANG],
-    ['Felsefe', 'FEL', []],
-    ['Beden Eğitimi ve Spor', 'BED', ['Beden Eğitimi']],
-    ['Görsel Sanatlar', 'GÖR', ['Resim']],
-    ['Müzik', 'MÜZ', []],
-    ['Sağlık Bilgisi ve Trafik Kültürü', 'SBT', []],
+  lise: LISE,
+  guzelsanatlar: [
+    ...LISE,
+    ['Bireysel Çalgı Eğitimi', 'BÇE', ['Bireysel Çalgı']],
+    ['Piyano Eğitimi', 'PİY', ['Piyano']],
+    ['Temel Müzik Eğitimi', 'TME', ['Müzik Teorisi', 'Solfej']],
+    ['Koro', 'KOR', []],
+    ['Orkestra ve Oda Müziği', 'ORK', ['Orkestra', 'Oda Müziği']],
+    ['Türk Müziği Tarihi', 'TMT', []],
+    ['Batı Müziği Tarihi', 'BMT', []],
+    ['Desen', 'DES', []],
+    ['Temel Sanat Eğitimi', 'TSE', []],
+    ['Sanat Tarihi', 'STA', []],
+    ['Heykel', 'HEY', []],
+    ['Grafik Tasarım', 'GRT', ['Grafik']],
   ],
 }
 
@@ -267,3 +292,62 @@ function tint(hex: string, alpha: number) {
 
 export const colorVars = (hex: string | undefined, alpha = 0.16) =>
   (hex ? { '--c': hex, '--cbg': tint(hex, alpha) } : {}) as Record<string, string>
+
+export function classCells(c: SchoolClass): { key: string; groups: string[] }[] {
+  const withStudents = c.groups.filter(g => g.students?.length)
+  if (!withStudents.length) return c.groups.length ? c.groups.map(g => ({ key: g.id, groups: [g.id] })) : [{ key: '', groups: [] }]
+  const cells = new Map<string, string[]>()
+  for (const g of c.groups) if (!g.students?.length) cells.set(g.id, [g.id])
+  for (const s of c.students ?? []) {
+    const gs = withStudents.filter(g => g.students!.includes(s.id)).map(g => g.id)
+    cells.set(gs.join('+') || '-', gs)
+  }
+  return [...cells].map(([key, groups]) => ({ key, groups }))
+}
+
+export const groupsOverlap = (c: SchoolClass | undefined, a: string | null, b: string | null) =>
+  a === null || b === null || a === b || !c || classCells(c).some(x => x.groups.includes(a) && x.groups.includes(b))
+
+const classKey = (s: string) => s.toLocaleUpperCase('tr').replace(/SINIFI?|ŞUBESİ?/g, '').replace(/[^\p{L}\p{N}]/gu, '')
+const HEADER = /^(S\.?\s*NO|SIRA( NO)?|NO|NUMARA(SI)?|ÖĞRENCİ( NO| NUMARASI| ADI)?|OKUL NO|ADI?|SOYADI?|ADI? SOYADI?|ADI VE SOYADI|SINIFI?|ŞUBESİ?|CİNSİYETİ?)$/
+
+export function parseStudents(text: string, classes: SchoolClass[]) {
+  const byKey = new Map(classes.flatMap(c => [[classKey(c.name), c.id], [classKey(c.short), c.id]] as [string, string][]))
+  const out: { classId: string | null; className: string; no: string; name: string }[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const cells = line.split(line.includes('\t') ? '\t' : /[;,]/).map(x => x.trim()).filter(Boolean)
+    if (!cells.length || cells.some(x => HEADER.test(x.toLocaleUpperCase('tr')))) continue
+    let classId: string | null = null, className = '', no = ''
+    const rest: string[] = []
+    for (const x of cells) {
+      const k = classKey(x)
+      if (!className && (byKey.has(k) || /^\d{1,2}[A-ZÇĞİÖŞÜ]{1,2}$/.test(k))) { className = x; classId = byKey.get(k) ?? null }
+      else if (/^\d+\.?$/.test(x)) no = x.replace('.', '')
+      else rest.push(x)
+    }
+    const name = upperName(rest.join(' ').replace(/\s+/g, ' '))
+    if (name) out.push({ classId, className, no, name })
+  }
+  return out
+}
+
+export function arrangeByTeacher(p: Project, classId: string, subjectId: string, split: number[], size: number, teacherOf: Record<string, string>) {
+  const c = p.classes.find(x => x.id === classId)
+  const subj = p.subjects.find(x => x.id === subjectId)
+  if (!c || !subj) return 0
+  let tag = `${subj.short} ${c.name}`
+  for (let n = 2; p.lessons.some(l => l.link.startsWith(tag + ' ')); n++) tag = `${subj.short} ${c.name} (${n})`
+  const rounds: Lesson[][] = []
+  for (const t of p.teachers) {
+    const mine = (c.students ?? []).filter(s => teacherOf[s.id] === t.id).map(s => s.id)
+    for (let i = 0, k = 0; i < mine.length; i += size, k++) {
+      const g = { id: newId('g'), name: `${subj.short} ${t.short || t.name}${mine.length > size ? ' ' + (k + 1) : ''}`, students: mine.slice(i, i + size) }
+      c.groups.push(g)
+      const l: Lesson = { id: newId('l'), subjectId, teacherIds: [t.id], roomIds: [], classes: [{ classId, groupId: g.id }], split: [...split], sameDayOk: false, link: '' }
+      p.lessons.push(l)
+      ;(rounds[k] ??= []).push(l)
+    }
+  }
+  rounds.forEach((r, k) => { if (r.length > 1) for (const l of r) l.link = `${tag} ${k + 1}` })
+  return rounds.reduce((a, r) => a + r.length, 0)
+}

@@ -1,4 +1,4 @@
-import { cardId, type Lesson, type Project } from './model'
+import { cardId, classCells, groupsOverlap, type Lesson, type Project } from './model'
 
 export type Kind = 'class' | 'teacher' | 'room'
 
@@ -56,13 +56,14 @@ export function buildIndex(p: Project): TTIndex {
   for (const [, g] of grids.teacher) g.forEach((cards, s) => { if (cards.length > 1) cards.forEach(c => mark(c.cardId, s)) })
   const cap = new Map(p.rooms.map(r => [r.id, r.capacity || 1]))
   for (const [rid, g] of grids.room) g.forEach((cards, s) => { if (cards.length > (cap.get(rid) ?? 1)) cards.forEach(c => mark(c.cardId, s)) })
-  for (const [, g] of grids.class)
+  const cls = new Map(p.classes.map(c => [c.id, c]))
+  for (const [cid, g] of grids.class)
     g.forEach((cards, s) => {
       for (let i = 0; i < cards.length; i++)
         for (let j = i + 1; j < cards.length; j++) {
           const a = cards[i], b = cards[j]
           if (a.cardId === b.cardId) continue
-          if (a.groupId === null || b.groupId === null || a.groupId === b.groupId) { mark(a.cardId, s); mark(b.cardId, s) }
+          if (groupsOverlap(cls.get(cid), a.groupId, b.groupId)) { mark(a.cardId, s); mark(b.cardId, s) }
         }
     })
   return { S, grids, unplaced, clashSlots }
@@ -133,5 +134,6 @@ export function loadOf(p: Project, kind: Kind, id: string) {
       }
     } else if (kind === 'teacher' ? l.teacherIds.includes(id) : l.roomIds.includes(id)) h += sum
   }
-  return h + Math.max(0, ...groups.values())
+  const c = kind === 'class' ? p.classes.find(x => x.id === id) : undefined
+  return h + Math.max(0, ...(c ? classCells(c) : []).map(cell => cell.groups.reduce((a, g) => a + (groups.get(g) ?? 0), 0)))
 }

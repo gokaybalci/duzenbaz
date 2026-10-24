@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { addMandatorySubjects, emptyProject, fileName, MANDATORY_SUBJECTS } from '../src/model'
+import { addMandatorySubjects, emptyProject, fileName, MANDATORY_SUBJECTS, parseStudents } from '../src/model'
 import { demoProject } from '../src/demo'
 import { migrate } from '../src/store'
 import { buildSheet, fillMonth } from '../src/duty'
@@ -46,5 +46,15 @@ assert.ok(n.duty.places && n.duty.assign && n.duty.fixed && n.school.name === ''
 
 const named = (name: string) => ({ ...emptyProject(), school: { name, year: '', principal: '', vice: '' } })
 assert.deepEqual([fileName(named(' Atatürk Ortaokulu ')), fileName(named('')), fileName(named('?!'), 'okul')], ['Atatürk_Ortaokulu', 'ders_programi', 'okul'], 'file names are cleaned the same way everywhere')
+
+const gsl = emptyProject()
+assert.equal(addMandatorySubjects(gsl, 'guzelsanatlar'), MANDATORY_SUBJECTS.lise.length + 12, 'güzel sanatlar lisesi gets the lise subjects and the art and music subjects')
+
+const cls = [{ id: 'a', name: '9-A', short: '9A', color: '', avail: '', groups: [] }]
+assert.deepEqual(parseStudents('S.No\tSınıf\tÖğrenci No\tAdı Soyadı\n1\t9/A\t123\tali yılmaz\n2\t10-B\t456\tAyşe  Kaya\n\n', cls), [
+  { classId: 'a', className: '9/A', no: '123', name: 'ALİ YILMAZ' },
+  { classId: null, className: '10-B', no: '456', name: 'AYŞE KAYA' },
+], 'Excel rows: header skipped, class matched or new, last number is the student number')
+assert.deepEqual(parseStudents('No;Adı;Soyadı\n7;Can;Demir', cls), [{ classId: null, className: '', no: '7', name: 'CAN DEMİR' }], 'CSV without a class column, name in two columns')
 
 console.log('subjects-check ok')

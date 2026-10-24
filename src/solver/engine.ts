@@ -1,4 +1,4 @@
-import { cardId, type Placement, type Project } from '../model'
+import { cardId, classCells, type Placement, type Project } from '../model'
 
 export interface SolveOptions {
   timeLimitMs: number
@@ -116,18 +116,18 @@ export class Solver {
       addRes('t:' + t.id, t.name, RES_TEACHER, t.avail, w.teacherGap, t.maxGapsPerDay ?? -1, t.maxPerDay || 0, t.maxDays || 0, 0)
     for (const r of p.useRooms === false ? [] : p.rooms) { addRes('r:' + r.id, r.name, RES_ROOM, r.avail, 0, -1, 0, 0, 0); caps[caps.length - 1] = Math.max(1, r.capacity || 1) }
     const classAtoms = new Map<string, number[]>()
+    const groupAtoms = new Map<string, number[]>()
     for (const c of p.classes) {
-      if (!c.groups.length) {
-        addRes('c:' + c.id, c.name, RES_CLASS, c.avail, w.classGap, -1, 0, 0, w.classLateStart)
-        classAtoms.set(c.id, [resIdx.get('c:' + c.id)!])
-      } else {
-        const atoms: number[] = []
-        for (const g of c.groups) {
-          addRes('c:' + c.id + ':' + g.id, `${c.name} (${g.name})`, RES_CLASS, c.avail, w.classGap, -1, 0, 0, w.classLateStart)
-          atoms.push(resIdx.get('c:' + c.id + ':' + g.id)!)
-        }
-        classAtoms.set(c.id, atoms)
+      const gName = new Map(c.groups.map(g => [g.id, g.name]))
+      const atoms: number[] = []
+      for (const cell of classCells(c)) {
+        const key = 'c:' + c.id + (cell.key ? ':' + cell.key : '')
+        addRes(key, cell.groups.length ? `${c.name} (${cell.groups.map(g => gName.get(g)).join(' + ')})` : c.name, RES_CLASS, c.avail, w.classGap, -1, 0, 0, w.classLateStart)
+        const i = resIdx.get(key)!
+        atoms.push(i)
+        for (const g of cell.groups) { const k = c.id + ':' + g; groupAtoms.set(k, [...(groupAtoms.get(k) ?? []), i]) }
       }
+      classAtoms.set(c.id, atoms)
     }
     const R = this.resName.length
     this.cap = Int32Array.from(caps)
@@ -176,7 +176,7 @@ export class Solver {
           if (!atoms) continue
           const cls = p.classes.find(x => x.id === c.classId)!
           if (c.groupId === null || !cls.groups.length) atoms.forEach(a => res.push(a))
-          else { const i = resIdx.get('c:' + c.classId + ':' + c.groupId); if (i !== undefined) res.push(i) }
+          else groupAtoms.get(c.classId + ':' + c.groupId)?.forEach(a => res.push(a))
           avails.push(cls.avail)
         }
       }
