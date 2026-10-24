@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Icon, type IconName } from '../icons'
 import { t } from '../i18n'
-import { arrangeByTeacher, fillTeachers, newId, parseSplit, parseStudents, pickColor, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
+import { fillTeachers, newId, parseSplit, parseStudents, pickColor, setStudentTeacher, splitLabel, syncGroupLessons, teachersOf, upperName, type Entity, type Project, type Room, type SchoolClass, type Teacher } from '../model'
 import { prunePlacements, removeTeacher, update, useProject } from '../store'
 import { loadOf, type Kind } from '../timetable'
 import { AvailabilityEditor, ChipSelect, Empty, MiniGrid, Modal, PageTitle, toast } from '../ui'
@@ -192,7 +192,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                     {entity === 'classes' && (
                       <td>
                         <button className="btn small ghost" onClick={() => setGroupsFor(e.id)}>
-                          {(e as SchoolClass).groups.length ? (e as SchoolClass).groups.map(g => g.name).join(', ') : <span className="hint">{t('Whole class')}</span>} <Icon n="edit" />
+                          {(e as SchoolClass).groups.length ? (e as SchoolClass).groups.filter(g => !g.parent).map(g => g.name).join(', ') : <span className="hint">{t('Whole class')}</span>} <Icon n="edit" />
                         </button>
                       </td>
                     )}
@@ -246,25 +246,42 @@ function CopyAvail({ from, list, onCopy }: { from: Entity; list: Entity[]; onCop
 function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }) {
   const [name, setName] = useState('')
   const p = useProject()
-  const used = (gid: string) => p.lessons.filter(l => l.classes.some(c => c.classId === cls.id && c.groupId === gid)).length
+  const cols = cls.groups.filter(g => !g.parent)
+  const used = (gid: string) => p.lessons.filter(l => l.classes.some(c => c.classId === cls.id && (c.groupId === gid || cls.groups.some(k => k.parent === gid && k.id === c.groupId)))).length
   const editCls = (fn: (c: SchoolClass) => void) => update(d => { const c = d.classes.find(x => x.id === cls.id); if (c) fn(c) }, 'groups' + cls.id)
+  const editGroup = (gid: string, fn: (g: SchoolClass['groups'][number], c: SchoolClass) => void, tag = '') =>
+    update(d => { const c = d.classes.find(x => x.id === cls.id); const g = c?.groups.find(x => x.id === gid); if (c && g) { fn(g, c); syncGroupLessons(d as Project, cls.id, gid); prunePlacements(d) } }, tag && tag + gid)
+  const teacherOptions = (sid: string | undefined) => { const own = sid ? teachersOf(p, sid) : []; return own.length ? own : p.teachers }
   return (
-    <Modal title={<>{t('Groups')}: {cls.name}</>} onClose={onClose} footer={<button className="btn primary" onClick={onClose}>{t('Done')}</button>}>
-      <p className="hint" style={{ marginTop: 0, maxWidth: 520 }}>
+    <Modal title={<>{t('Groups')}: {cls.name}</>} onClose={onClose} wide footer={<button className="btn primary" onClick={onClose}>{t('Done')}</button>}>
+      <p className="hint" style={{ marginTop: 0, maxWidth: 560 }}>
         {t('Split a class into groups when part of the class has a different lesson at the same time (e.g. electives, language groups). Lessons of different groups can run in parallel; a whole-class lesson blocks all groups.')}
       </p>
-      {!!cls.students?.length && <p className="hint" style={{ maxWidth: 520 }}>{t('Tick the students of each group. Groups that share a student never run at the same time.')}</p>}
+      {!!cls.students?.length && <p className="hint" style={{ maxWidth: 560 }}>{t("Give each group its subject and hours, then pick each student's teacher below. Every teacher's students get their own lesson; the lessons of one group run at the same time. Groups that share a student never run at the same time.")}</p>}
       <div className="stack">
-        {cls.groups.map(g => (
+        {cols.map(g => (
           <div key={g.id} className="row">
-            <input value={g.name} onChange={e => editCls(c => { c.groups.find(x => x.id === g.id)!.name = e.target.value })} />
+            <input value={g.name} aria-label={t('Group')} onChange={e => editGroup(g.id, (x, c) => {
+              x.name = e.target.value
+              for (const k of c.groups) if (k.parent === x.id) { const te = p.teachers.find(y => y.id === k.teacherId); k.name = `${x.name} · ${te?.short || te?.name || ''}` }
+            }, 'gname')} />
+            {!!cls.students?.length && <>
+              <select aria-label={t('Subject')} value={g.subjectId ?? ''} onChange={e => editGroup(g.id, x => { x.subjectId = e.target.value || undefined })}>
+                <option value="">{t('Subject…')}</option>
+                {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <SplitInput value={g.split ?? [2]} onChange={v => editGroup(g.id, x => { x.split = v }, 'gsplit')} />
+            </>}
             <span className="hint">{t('{n} lessons', { n: used(g.id) })}</span>
             <button className="btn ghost small danger" onClick={() => {
               if (used(g.id) && !confirm(t('Lessons of this group will become whole-class lessons. Continue?'))) return
               update(d => {
                 const c = d.classes.find(x => x.id === cls.id)!
-                c.groups = c.groups.filter(x => x.id !== g.id)
+                const kids = new Set(c.groups.filter(x => x.parent === g.id).map(x => x.id))
+                d.lessons = d.lessons.filter(l => !l.classes.some(cr => cr.classId === cls.id && cr.groupId && kids.has(cr.groupId)))
+                c.groups = c.groups.filter(x => x.id !== g.id && !kids.has(x.id))
                 d.lessons.forEach(l => l.classes.forEach(cr => { if (cr.classId === cls.id && cr.groupId === g.id) cr.groupId = null }))
+                prunePlacements(d)
               })
             }}><Icon n="trash" /></button>
           </div>
@@ -275,18 +292,25 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
           <button className="btn" disabled={!name.trim()} onClick={() => { editCls(c => { c.groups.push({ id: newId('g'), name: name.trim() }) }); setName('') }}>+ {t('Add group')}</button>
         </div>
       </div>
-      {!!cls.students?.length && !!cls.groups.length && (
-        <div className="table-wrap scroll-box" style={{ marginTop: 12, maxHeight: 320, overflow: 'auto' }}>
+      {!!cls.students?.length && !!cols.length && (
+        <div className="table-wrap scroll-box" style={{ marginTop: 12, maxHeight: 420, overflow: 'auto' }}>
           <table className="data">
-            <thead><tr><th>{t('Student')}</th>{cls.groups.map(g => <th key={g.id} className="num">{g.name}</th>)}</tr></thead>
+            <thead><tr><th>{t('Student')}</th>{cols.map(g => <th key={g.id}>{g.name}</th>)}</tr></thead>
             <tbody>
               {cls.students.map(st => (
                 <tr key={st.id}>
                   <td>{st.no} {st.name}</td>
-                  {cls.groups.map(g => {
-                    const on = !!g.students?.includes(st.id)
-                    return <td key={g.id} className="num"><input type="checkbox" aria-label={`${st.name} – ${g.name}`} checked={on}
-                      onChange={() => editCls(c => { const x = c.groups.find(y => y.id === g.id)!; x.students = on ? x.students!.filter(y => y !== st.id) : [...(x.students ?? []), st.id] })} /></td>
+                  {cols.map(g => {
+                    const cur = cls.groups.find(k => k.parent === g.id && k.students?.includes(st.id))?.teacherId ?? ''
+                    return (
+                      <td key={g.id}>
+                        <select aria-label={`${st.name} – ${g.name}`} value={cur} disabled={!g.subjectId} title={g.subjectId ? '' : t('Choose the subject of this group first')}
+                          onChange={e => update(d => { setStudentTeacher(d as Project, cls.id, g.id, st.id, e.target.value); prunePlacements(d) })}>
+                          <option value="">–</option>
+                          {teacherOptions(g.subjectId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                      </td>
+                    )
                   })}
                 </tr>
               ))}
@@ -294,94 +318,15 @@ function GroupsModal({ cls, onClose }: { cls: SchoolClass; onClose: () => void }
           </table>
         </div>
       )}
-      {!!cls.students?.length && <ArrangeByTeacher cls={cls} />}
     </Modal>
   )
 }
 
-function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
-  const p = useProject()
-  const [subjectId, setSubjectId] = useState('')
-  const [splitText, setSplitText] = useState('2')
-  const [sizeOf, setSizeOf] = useState<Record<string, number>>({})
-  const [teacherOf, setTeacherOf] = useState<Record<string, string>>({})
-  const split = parseSplit(splitText)
-  const ready = subjectId && split && Object.values(teacherOf).some(Boolean)
-  const roundOf = (id: string) => {
-    const mine = cls.students!.filter(st => teacherOf[st.id] === teacherOf[id])
-    return Math.floor(mine.findIndex(st => st.id === id) / Math.min(sizeOf[teacherOf[id]] || mine.length, mine.length))
-  }
-  const rounds = Math.max(0, ...cls.students!.filter(st => teacherOf[st.id]).map(st => roundOf(st.id) + 1))
-  const free = Array.from({ length: rounds }, (_, k) => cls.students!.filter(st => !teacherOf[st.id] || roundOf(st.id) !== k)).filter(f => f.length)
-  return (
-    <details style={{ marginTop: 12 }}>
-      <summary style={{ cursor: 'pointer' }}><b>{t('Group by teacher (e.g. individual instrument)')}</b></summary>
-      <p className="hint" style={{ maxWidth: 520 }}>{t("Pick each student's teacher, then how many students each teacher takes in one lesson. One lesson of every teacher runs at the same time.")}</p>
-      <div className="row">
-        <label className="field">{t('Subject')}
-          <select value={subjectId} onChange={e => setSubjectId(e.target.value)}>
-            <option value="">{t('Choose…')}</option>
-            {p.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
-        <label className="field">{t('Hours')}
-          <input value={splitText} style={{ width: 80, borderColor: split ? undefined : 'var(--danger)' }} onChange={e => setSplitText(e.target.value)} />
-        </label>
-      </div>
-      <div className="table-wrap scroll-box" style={{ marginTop: 8, maxHeight: 260, overflow: 'auto' }}>
-        <table className="data">
-          <tbody>
-            {cls.students!.map(st => (
-              <tr key={st.id}>
-                <td>{st.no} {st.name}</td>
-                <td>
-                  <select aria-label={st.name} value={teacherOf[st.id] ?? ''} onChange={e => setTeacherOf({ ...teacherOf, [st.id]: e.target.value })}>
-                    <option value="">–</option>
-                    {p.teachers.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {p.teachers.some(x => Object.values(teacherOf).includes(x.id)) && (
-        <table className="data" style={{ marginTop: 8 }}>
-          <thead><tr><th>{t('Teacher')}</th><th className="num">{t('Students')}</th><th className="num">{t('Students per lesson')}</th></tr></thead>
-          <tbody>
-            {p.teachers.map(x => {
-              const n = cls.students!.filter(st => teacherOf[st.id] === x.id).length
-              if (!n) return null
-              return (
-                <tr key={x.id}>
-                  <td>{x.name}</td>
-                  <td className="num">{n}</td>
-                  <td className="num"><input type="number" min={1} max={n} aria-label={x.name} value={Math.min(sizeOf[x.id] || n, n)} style={{ width: 70 }}
-                    onChange={e => setSizeOf({ ...sizeOf, [x.id]: Math.max(1, +e.target.value || 1) })} /></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-      {!!free.length && (
-        <div className="card pad" style={{ marginTop: 8, borderColor: 'var(--warn)', maxWidth: 560 }}>
-          <b style={{ color: 'var(--warn)' }}>{t('Some students would have no lesson')}</b>
-          {Array.from({ length: rounds }, (_, k) => {
-            const names = cls.students!.filter(st => !teacherOf[st.id] || roundOf(st.id) !== k)
-            return names.length ? <div key={k} className="hint">{t('Lesson time {k}', { k: k + 1 })}: {names.map(st => st.name).join(', ')}</div> : null
-          })}
-          <div className="hint" style={{ marginTop: 6 }}>{t('Every student needs a lesson at that time: put all students of a teacher in one lesson, or give the free students another group lesson then (e.g. group them by teacher for a second instrument). Otherwise Generate reports it as an error.')}</div>
-        </div>
-      )}
-      <button className="btn primary" style={{ marginTop: 8 }} disabled={!ready} onClick={() => {
-        let n = 0
-        update(d => { n = arrangeByTeacher(d as Project, cls.id, subjectId, split!, teacherOf, sizeOf) })
-        toast(t('{n} groups and lessons created', { n }))
-        setTeacherOf({})
-      }}>{t('Create groups and lessons')}</button>
-    </details>
-  )
+function SplitInput({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+  const [text, setText] = useState(splitLabel(value))
+  const ok = parseSplit(text)
+  return <input aria-label={t('Hours')} title={t('Hours')} value={text} style={{ width: 70, borderColor: ok ? undefined : 'var(--danger)' }}
+    onChange={e => { setText(e.target.value); const v = parseSplit(e.target.value); if (v) onChange(v) }} />
 }
 
 function StudentsModal({ cls, onClose }: { cls?: SchoolClass; onClose: () => void }) {
@@ -420,7 +365,7 @@ function StudentsModal({ cls, onClose }: { cls?: SchoolClass; onClose: () => voi
                 <tr key={st.id}>
                   <td className="num">{st.no}</td>
                   <td>{st.name}</td>
-                  <td className="hint">{cls.groups.filter(g => g.students?.includes(st.id)).map(g => g.name).join(', ')}</td>
+                  <td className="hint">{cls.groups.filter(g => g.students?.includes(st.id) && !cls.groups.some(k => k.parent === g.id)).map(g => g.name).join(', ')}</td>
                   <td><button className="btn ghost small danger" onClick={() => remove(st.id)} title={t('Delete')}><Icon n="trash" /></button></td>
                 </tr>
               ))}

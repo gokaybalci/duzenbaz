@@ -31,6 +31,10 @@ interface ClassGroup {
   id: string
   name: string
   students?: string[]
+  subjectId?: string
+  split?: number[]
+  parent?: string
+  teacherId?: string
 }
 
 export interface SchoolClass extends Entity {
@@ -332,26 +336,36 @@ export function parseStudents(text: string, classes: SchoolClass[]) {
   return out
 }
 
-export function arrangeByTeacher(p: Project, classId: string, subjectId: string, split: number[], teacherOf: Record<string, string>, sizeOf: Record<string, number>) {
+export function syncGroupLessons(p: Project, classId: string, groupId: string) {
   const c = p.classes.find(x => x.id === classId)
-  const subj = p.subjects.find(x => x.id === subjectId)
-  if (!c || !subj) return 0
-  let tag = `${subj.short} ${c.name}`
-  for (let n = 2; p.lessons.some(l => l.link.startsWith(tag + ' ')); n++) tag = `${subj.short} ${c.name} (${n})`
-  const rounds: Lesson[][] = []
-  for (const t of p.teachers) {
-    const mine = (c.students ?? []).filter(s => teacherOf[s.id] === t.id).map(s => s.id)
-    const size = Math.max(1, sizeOf[t.id] || mine.length)
-    for (let i = 0, k = 0; i < mine.length; i += size, k++) {
-      const g = { id: newId('g'), name: `${subj.short} ${t.short || t.name}${mine.length > size ? ' ' + (k + 1) : ''}`, students: mine.slice(i, i + size) }
-      c.groups.push(g)
-      const l: Lesson = { id: newId('l'), subjectId, teacherIds: [t.id], roomIds: [], classes: [{ classId, groupId: g.id }], split: [...split], sameDayOk: false, link: '' }
-      p.lessons.push(l)
-      ;(rounds[k] ??= []).push(l)
-    }
+  const g = c?.groups.find(x => x.id === groupId)
+  if (!c || !g) return
+  const kids = c.groups.filter(k => k.parent === g.id)
+  const empty = new Set(kids.filter(k => !k.students?.length).map(k => k.id))
+  c.groups = c.groups.filter(k => !empty.has(k.id))
+  p.lessons = p.lessons.filter(l => !l.classes.some(r => r.classId === classId && r.groupId && empty.has(r.groupId)))
+  const live = kids.filter(k => !empty.has(k.id))
+  g.students = live.flatMap(k => k.students!)
+  for (const k of live) {
+    let l = p.lessons.find(x => x.classes.length === 1 && x.classes[0].classId === classId && x.classes[0].groupId === k.id)
+    if (!g.subjectId) { if (l) p.lessons = p.lessons.filter(x => x !== l); continue }
+    if (!l) p.lessons.push(l = { id: newId('l'), subjectId: '', teacherIds: [], roomIds: [], classes: [{ classId, groupId: k.id }], split: [], sameDayOk: false, link: '' })
+    Object.assign(l, { subjectId: g.subjectId, teacherIds: [k.teacherId!], split: [...(g.split ?? [2])], link: live.length > 1 ? `${c.name} ${g.name}` : '' })
   }
-  rounds.forEach((r, k) => { if (r.length > 1) for (const l of r) l.link = `${tag} ${k + 1}` })
-  return rounds.reduce((a, r) => a + r.length, 0)
+}
+
+export function setStudentTeacher(p: Project, classId: string, groupId: string, studentId: string, teacherId: string) {
+  const c = p.classes.find(x => x.id === classId)
+  const g = c?.groups.find(x => x.id === groupId)
+  const t = p.teachers.find(x => x.id === teacherId)
+  if (!c || !g) return
+  for (const k of c.groups) if (k.parent === g.id && k.students) k.students = k.students.filter(s => s !== studentId)
+  if (t) {
+    let k = c.groups.find(x => x.parent === g.id && x.teacherId === t.id)
+    if (!k) c.groups.push(k = { id: newId('g'), name: `${g.name} · ${t.short || t.name}`, parent: g.id, teacherId: t.id, students: [] })
+    k.students!.push(studentId)
+  }
+  syncGroupLessons(p, classId, groupId)
 }
 
 export const teachersOf = (p: Project, subjectId: string) => p.teachers.filter(t => t.subjectIds?.includes(subjectId))

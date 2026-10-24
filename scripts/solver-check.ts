@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { demoProject } from '../src/demo'
-import { arrangeByTeacher, cardId, classCells, emptyProject, fullGrid, newId, type Project, type SchoolClass } from '../src/model'
+import { cardId, setStudentTeacher, classCells, emptyProject, fullGrid, newId, type Project, type SchoolClass } from '../src/model'
 import { evaluate, solve } from '../src/solver/engine'
 import { buildIndex } from '../src/timetable'
 
@@ -55,31 +55,33 @@ g.teachers.push(tea('X'), tea('T1'), tea('T2'), tea('T3'), tea('T4'), tea('T5'),
 const k: SchoolClass = { ...ent('9-A'), groups: [], students: [1, 2, 3, 4, 5, 6].map(i => ({ id: 's' + i, no: String(i), name: 'Ö' + i })) }
 g.classes.push(k)
 g.lessons.push({ id: 'tde', subjectId: g.subjects[0].id, teacherIds: [g.teachers[0].id], roomIds: [], classes: [{ classId: k.id, groupId: null }], split: Array(19).fill(2), sameDayOk: true, link: '' })
-const teacherOf = { s1: g.teachers[1].id, s2: g.teachers[1].id, s3: g.teachers[2].id, s4: g.teachers[3].id, s5: g.teachers[4].id, s6: g.teachers[5].id }
-assert.equal(arrangeByTeacher(g, k.id, g.subjects[1].id, [2], teacherOf, { [g.teachers[2].id]: 1 }), 5, 'one lesson per teacher unless a size is given, T1 teaches s1 and s2 together')
-const split = emptyProject(); Object.assign(split, { subjects: g.subjects, teachers: g.teachers, classes: [{ ...k, groups: [] }] })
-const five = Object.fromEntries(k.students!.slice(0, 5).map(s => [s.id, g.teachers[1].id]))
-assert.equal(arrangeByTeacher(split, k.id, g.subjects[1].id, [2], { ...five, s6: g.teachers[2].id }, { [g.teachers[1].id]: 2 }), 4, 'T1 picks 2 per lesson for 5 students (3 lessons), T2 takes its one student')
-assert.deepEqual(split.classes[0].groups.map(x => x.students!.length), [2, 2, 1, 1])
-assert.equal(new Set(g.lessons.filter(l => l.subjectId === g.subjects[1].id).map(l => l.link)).size, 1, 'the five piano lessons are linked')
+k.groups.push({ id: 'piy', name: 'Piyano', subjectId: g.subjects[1].id, split: [2] })
+const teacherOf: Record<string, number> = { s1: 1, s2: 1, s3: 2, s4: 3, s5: 4, s6: 5 }
+for (const [sid, ti] of Object.entries(teacherOf)) setStudentTeacher(g, k.id, 'piy', sid, g.teachers[ti].id)
+const piano = g.lessons.filter(l => l.subjectId === g.subjects[1].id)
+assert.equal(piano.length, 5, 'one lesson per teacher, T1 teaches s1 and s2 together')
+assert.equal(new Set(piano.map(l => l.link)).size, 1, 'the five piano lessons are linked')
+assert.deepEqual(k.groups.find(x => x.id === 'piy')!.students!.sort(), ['s1', 's2', 's3', 's4', 's5', 's6'], 'the group holds every student that has a teacher')
 assert.equal(classCells(k).length, 5, 'students in the same groups share one timetable')
+setStudentTeacher(g, k.id, 'piy', 's6', g.teachers[1].id)
+setStudentTeacher(g, k.id, 'piy', 's6', g.teachers[5].id)
+assert.equal(g.lessons.filter(l => l.subjectId === g.subjects[1].id).length, 5, 'moving a student back and forth leaves no empty lesson behind')
 const gr = solve(g, { timeLimitMs: 2000, seed: 1, keepPlacements: false })
 assert.equal(gr.hard, 0, `9-A is solved without gaps (${gr.issues.map(i => i.kind + ' ' + i.who).join(', ')})`)
 assert.equal(new Set(g.lessons.filter(l => l.link).map(l => JSON.stringify(gr.placements[cardId(l.id, 0)]))).size, 1, 'all piano lessons at the same time')
 assert.equal(S, 40)
 
 // A choir group with s1 and s3 overlaps both T1's and T2's piano groups, which themselves do not overlap.
-const [p1, p2] = k.groups
 k.groups.push({ id: 'koro', name: 'Koro', students: ['s1', 's3'] })
 g.lessons.push({ id: 'kor', subjectId: g.subjects[2].id, teacherIds: [g.teachers[6].id], roomIds: [], classes: [{ classId: k.id, groupId: 'koro' }], split: [1], sameDayOk: false, link: '' })
 const at = (id: string) => ({ [cardId(id, 0)]: { day: 0, period: 0, locked: false } })
-const pianoOf = (gid: string) => g.lessons.find(l => l.classes[0].groupId === gid)!.id
-g.placements = { ...at(pianoOf(p1.id)), ...at('kor') }
+const pianoOf = (ti: number) => g.lessons.find(l => l.subjectId === g.subjects[1].id && l.teacherIds[0] === g.teachers[ti].id)!.id
+g.placements = { ...at(pianoOf(1)), ...at('kor') }
 assert.ok(buildIndex(g).clashSlots.size > 0 && evaluate(g).issues.some(i => i.kind === 'classClash'), 'choir and piano of a shared student clash')
-g.placements = { ...at(pianoOf(p1.id)), ...at(pianoOf(p2.id)) }
+g.placements = { ...at(pianoOf(1)), ...at(pianoOf(2)) }
 assert.ok(buildIndex(g).clashSlots.size === 0 && !evaluate(g).issues.some(i => i.kind === 'classClash'), 'piano groups without shared students do not clash')
 
-// No student may sit idle: a teacher with two lessons in a class only works if the others have a lesson then too.
+// No student may sit idle: piano and violin groups that take turns fill every hour.
 const rot = (withViolin: boolean) => {
   const r: Project = emptyProject()
   r.subjects.push(ent('TDE'), ent('PİY'), ent('KEM'))
@@ -87,13 +89,18 @@ const rot = (withViolin: boolean) => {
   const c: SchoolClass = { ...ent('9-B'), groups: [], students: [1, 2, 3, 4].map(i => ({ id: 's' + i, no: String(i), name: 'Ö' + i })) }
   r.classes.push(c)
   r.lessons.push({ id: 'tde', subjectId: r.subjects[0].id, teacherIds: [r.teachers[0].id], roomIds: [], classes: [{ classId: c.id, groupId: null }], split: Array(withViolin ? 18 : 19).fill(2), sameDayOk: true, link: '' })
-  const all = (t: number) => Object.fromEntries(c.students!.map(s => [s.id, r.teachers[t].id]))
-  arrangeByTeacher(r, c.id, r.subjects[1].id, [2], all(1), { [r.teachers[1].id]: 2 })
-  if (withViolin) arrangeByTeacher(r, c.id, r.subjects[2].id, [2], all(2), { [r.teachers[2].id]: 2 })
+  c.groups.push({ id: 'p1', name: 'Piyano 1', subjectId: r.subjects[1].id }, { id: 'p2', name: 'Piyano 2', subjectId: r.subjects[1].id })
+  for (const s of ['s1', 's2']) setStudentTeacher(r, c.id, 'p1', s, r.teachers[1].id)
+  for (const s of ['s3', 's4']) setStudentTeacher(r, c.id, 'p2', s, r.teachers[1].id)
+  if (withViolin) {
+    c.groups.push({ id: 'k1', name: 'Keman 1', subjectId: r.subjects[2].id }, { id: 'k2', name: 'Keman 2', subjectId: r.subjects[2].id })
+    for (const s of ['s1', 's2']) setStudentTeacher(r, c.id, 'k1', s, r.teachers[2].id)
+    for (const s of ['s3', 's4']) setStudentTeacher(r, c.id, 'k2', s, r.teachers[2].id)
+  }
   return solve(r, { timeLimitMs: 2000, seed: 1, keepPlacements: false })
 }
 const ok = rot(true)
 assert.equal(ok.hard, 0, `piano and violin rotate so nobody is idle (${ok.issues.map(i => i.kind + ' ' + i.who).join(', ')})`)
 const idle = rot(false)
-assert.ok(idle.hard > 0 && idle.issues.some(i => i.who.includes('PİY AYŞE')), 'piano alone in two lessons leaves students idle and is reported')
+assert.ok(idle.hard > 0 && idle.issues.some(i => i.who.includes('Piyano')), 'piano alone in two lessons leaves students idle and is reported')
 console.log('solver-check ok')
