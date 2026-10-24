@@ -331,7 +331,7 @@ export function parseStudents(text: string, classes: SchoolClass[]) {
   return out
 }
 
-export function arrangeByTeacher(p: Project, classId: string, subjectId: string, split: number[], size: number, teacherOf: Record<string, string>) {
+export function arrangeByTeacher(p: Project, classId: string, subjectId: string, split: number[], teacherOf: Record<string, string>, sizeOf: Record<string, number>) {
   const c = p.classes.find(x => x.id === classId)
   const subj = p.subjects.find(x => x.id === subjectId)
   if (!c || !subj) return 0
@@ -340,6 +340,7 @@ export function arrangeByTeacher(p: Project, classId: string, subjectId: string,
   const rounds: Lesson[][] = []
   for (const t of p.teachers) {
     const mine = (c.students ?? []).filter(s => teacherOf[s.id] === t.id).map(s => s.id)
+    const size = Math.max(1, sizeOf[t.id] || mine.length)
     for (let i = 0, k = 0; i < mine.length; i += size, k++) {
       const g = { id: newId('g'), name: `${subj.short} ${t.short || t.name}${mine.length > size ? ' ' + (k + 1) : ''}`, students: mine.slice(i, i + size) }
       c.groups.push(g)

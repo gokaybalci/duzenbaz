@@ -56,7 +56,11 @@ const k: SchoolClass = { ...ent('9-A'), groups: [], students: [1, 2, 3, 4, 5, 6]
 g.classes.push(k)
 g.lessons.push({ id: 'tde', subjectId: g.subjects[0].id, teacherIds: [g.teachers[0].id], roomIds: [], classes: [{ classId: k.id, groupId: null }], split: Array(19).fill(2), sameDayOk: true, link: '' })
 const teacherOf = { s1: g.teachers[1].id, s2: g.teachers[1].id, s3: g.teachers[2].id, s4: g.teachers[3].id, s5: g.teachers[4].id, s6: g.teachers[5].id }
-assert.equal(arrangeByTeacher(g, k.id, g.subjects[1].id, [2], 2, teacherOf), 5, 'one lesson per teacher, T1 teaches s1 and s2 together')
+assert.equal(arrangeByTeacher(g, k.id, g.subjects[1].id, [2], teacherOf, { [g.teachers[2].id]: 1 }), 5, 'one lesson per teacher unless a size is given, T1 teaches s1 and s2 together')
+const split = emptyProject(); Object.assign(split, { subjects: g.subjects, teachers: g.teachers, classes: [{ ...k, groups: [] }] })
+const five = Object.fromEntries(k.students!.slice(0, 5).map(s => [s.id, g.teachers[1].id]))
+assert.equal(arrangeByTeacher(split, k.id, g.subjects[1].id, [2], { ...five, s6: g.teachers[2].id }, { [g.teachers[1].id]: 2 }), 4, 'T1 picks 2 per lesson for 5 students (3 lessons), T2 takes its one student')
+assert.deepEqual(split.classes[0].groups.map(x => x.students!.length), [2, 2, 1, 1])
 assert.equal(new Set(g.lessons.filter(l => l.subjectId === g.subjects[1].id).map(l => l.link)).size, 1, 'the five piano lessons are linked')
 assert.equal(classCells(k).length, 5, 'students in the same groups share one timetable')
 const gr = solve(g, { timeLimitMs: 2000, seed: 1, keepPlacements: false })

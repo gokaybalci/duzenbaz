@@ -423,7 +423,7 @@ export const tr: Record<string, string> = {
   'No': 'No',
   'Tick the students of each group. Groups that share a student never run at the same time.': 'Her grubun öğrencilerini işaretleyin. Ortak öğrencisi olan gruplar hiçbir zaman aynı saatte olmaz.',
   'Group by teacher (e.g. individual instrument)': 'Öğretmene göre grupla (ör. bireysel çalgı)',
-  "Pick each student's teacher. Every teacher's students are split into lessons of at most the given size; one lesson of every teacher runs at the same time.": 'Her öğrencinin öğretmenini seçin. Her öğretmenin öğrencileri en fazla verilen sayıda kişilik derslere bölünür; her öğretmenin bir dersi aynı saatte yapılır.',
+  "Pick each student's teacher, then how many students each teacher takes in one lesson. One lesson of every teacher runs at the same time.": 'Her öğrencinin öğretmenini, sonra her öğretmenin bir derste kaç öğrenci alacağını seçin. Her öğretmenin bir dersi aynı saatte yapılır.',
   'Students per lesson': 'Derste öğrenci sayısı',
   '{n} groups and lessons created': '{n} grup ve ders oluşturuldu',
   'Create groups and lessons': 'Grupları ve dersleri oluştur',

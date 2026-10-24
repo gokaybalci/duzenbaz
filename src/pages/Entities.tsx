@@ -301,14 +301,14 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
   const p = useProject()
   const [subjectId, setSubjectId] = useState('')
   const [splitText, setSplitText] = useState('2')
-  const [size, setSize] = useState(2)
+  const [sizeOf, setSizeOf] = useState<Record<string, number>>({})
   const [teacherOf, setTeacherOf] = useState<Record<string, string>>({})
   const split = parseSplit(splitText)
   const ready = subjectId && split && Object.values(teacherOf).some(Boolean)
   return (
     <details style={{ marginTop: 12 }}>
       <summary style={{ cursor: 'pointer' }}><b>{t('Group by teacher (e.g. individual instrument)')}</b></summary>
-      <p className="hint" style={{ maxWidth: 520 }}>{t("Pick each student's teacher. Every teacher's students are split into lessons of at most the given size; one lesson of every teacher runs at the same time.")}</p>
+      <p className="hint" style={{ maxWidth: 520 }}>{t("Pick each student's teacher, then how many students each teacher takes in one lesson. One lesson of every teacher runs at the same time.")}</p>
       <div className="row">
         <label className="field">{t('Subject')}
           <select value={subjectId} onChange={e => setSubjectId(e.target.value)}>
@@ -318,9 +318,6 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
         </label>
         <label className="field">{t('Hours')}
           <input value={splitText} style={{ width: 80, borderColor: split ? undefined : 'var(--danger)' }} onChange={e => setSplitText(e.target.value)} />
-        </label>
-        <label className="field">{t('Students per lesson')}
-          <input type="number" min={1} max={30} value={size} style={{ width: 80 }} onChange={e => setSize(Math.max(1, +e.target.value || 1))} />
         </label>
       </div>
       <div className="table-wrap" style={{ marginTop: 8, maxHeight: 260, overflow: 'auto' }}>
@@ -340,9 +337,28 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
           </tbody>
         </table>
       </div>
+      {p.teachers.some(x => Object.values(teacherOf).includes(x.id)) && (
+        <table className="data" style={{ marginTop: 8 }}>
+          <thead><tr><th>{t('Teacher')}</th><th className="num">{t('Students')}</th><th className="num">{t('Students per lesson')}</th></tr></thead>
+          <tbody>
+            {p.teachers.map(x => {
+              const n = cls.students!.filter(st => teacherOf[st.id] === x.id).length
+              if (!n) return null
+              return (
+                <tr key={x.id}>
+                  <td>{x.name}</td>
+                  <td className="num">{n}</td>
+                  <td className="num"><input type="number" min={1} max={n} aria-label={x.name} value={Math.min(sizeOf[x.id] || n, n)} style={{ width: 70 }}
+                    onChange={e => setSizeOf({ ...sizeOf, [x.id]: Math.max(1, +e.target.value || 1) })} /></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
       <button className="btn primary" style={{ marginTop: 8 }} disabled={!ready} onClick={() => {
         let n = 0
-        update(d => { n = arrangeByTeacher(d as Project, cls.id, subjectId, split!, size, teacherOf) })
+        update(d => { n = arrangeByTeacher(d as Project, cls.id, subjectId, split!, teacherOf, sizeOf) })
         toast(t('{n} groups and lessons created', { n }))
         setTeacherOf({})
       }}>{t('Create groups and lessons')}</button>
