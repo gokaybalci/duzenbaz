@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Düzenbaz",
   "mainBinaryName": "duzenbaz",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "identifier": "com.duzenbaz.desktop",
   "build": {
     "frontendDist": "../dist",
