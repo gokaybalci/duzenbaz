@@ -305,6 +305,12 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
   const [teacherOf, setTeacherOf] = useState<Record<string, string>>({})
   const split = parseSplit(splitText)
   const ready = subjectId && split && Object.values(teacherOf).some(Boolean)
+  const roundOf = (id: string) => {
+    const mine = cls.students!.filter(st => teacherOf[st.id] === teacherOf[id])
+    return Math.floor(mine.findIndex(st => st.id === id) / Math.min(sizeOf[teacherOf[id]] || mine.length, mine.length))
+  }
+  const rounds = Math.max(0, ...cls.students!.filter(st => teacherOf[st.id]).map(st => roundOf(st.id) + 1))
+  const free = Array.from({ length: rounds }, (_, k) => cls.students!.filter(st => !teacherOf[st.id] || roundOf(st.id) !== k)).filter(f => f.length)
   return (
     <details style={{ marginTop: 12 }}>
       <summary style={{ cursor: 'pointer' }}><b>{t('Group by teacher (e.g. individual instrument)')}</b></summary>
@@ -355,6 +361,16 @@ function ArrangeByTeacher({ cls }: { cls: SchoolClass }) {
             })}
           </tbody>
         </table>
+      )}
+      {!!free.length && (
+        <div className="card pad" style={{ marginTop: 8, borderColor: 'var(--warn)', maxWidth: 560 }}>
+          <b style={{ color: 'var(--warn)' }}>{t('Some students would have no lesson')}</b>
+          {Array.from({ length: rounds }, (_, k) => {
+            const names = cls.students!.filter(st => !teacherOf[st.id] || roundOf(st.id) !== k)
+            return names.length ? <div key={k} className="hint">{t('Lesson time {k}', { k: k + 1 })}: {names.map(st => st.name).join(', ')}</div> : null
+          })}
+          <div className="hint" style={{ marginTop: 6 }}>{t('Every student needs a lesson at that time: put all students of a teacher in one lesson, or give the free students another group lesson then (e.g. group them by teacher for a second instrument). Otherwise Generate reports it as an error.')}</div>
+        </div>
       )}
       <button className="btn primary" style={{ marginTop: 8 }} disabled={!ready} onClick={() => {
         let n = 0

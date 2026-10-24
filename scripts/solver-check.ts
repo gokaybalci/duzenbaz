@@ -78,4 +78,22 @@ g.placements = { ...at(pianoOf(p1.id)), ...at('kor') }
 assert.ok(buildIndex(g).clashSlots.size > 0 && evaluate(g).issues.some(i => i.kind === 'classClash'), 'choir and piano of a shared student clash')
 g.placements = { ...at(pianoOf(p1.id)), ...at(pianoOf(p2.id)) }
 assert.ok(buildIndex(g).clashSlots.size === 0 && !evaluate(g).issues.some(i => i.kind === 'classClash'), 'piano groups without shared students do not clash')
+
+// No student may sit idle: a teacher with two lessons in a class only works if the others have a lesson then too.
+const rot = (withViolin: boolean) => {
+  const r: Project = emptyProject()
+  r.subjects.push(ent('TDE'), ent('PİY'), ent('KEM'))
+  r.teachers.push(tea('X'), tea('AYŞE'), tea('MEHMET'))
+  const c: SchoolClass = { ...ent('9-B'), groups: [], students: [1, 2, 3, 4].map(i => ({ id: 's' + i, no: String(i), name: 'Ö' + i })) }
+  r.classes.push(c)
+  r.lessons.push({ id: 'tde', subjectId: r.subjects[0].id, teacherIds: [r.teachers[0].id], roomIds: [], classes: [{ classId: c.id, groupId: null }], split: Array(withViolin ? 18 : 19).fill(2), sameDayOk: true, link: '' })
+  const all = (t: number) => Object.fromEntries(c.students!.map(s => [s.id, r.teachers[t].id]))
+  arrangeByTeacher(r, c.id, r.subjects[1].id, [2], all(1), { [r.teachers[1].id]: 2 })
+  if (withViolin) arrangeByTeacher(r, c.id, r.subjects[2].id, [2], all(2), { [r.teachers[2].id]: 2 })
+  return solve(r, { timeLimitMs: 2000, seed: 1, keepPlacements: false })
+}
+const ok = rot(true)
+assert.equal(ok.hard, 0, `piano and violin rotate so nobody is idle (${ok.issues.map(i => i.kind + ' ' + i.who).join(', ')})`)
+const idle = rot(false)
+assert.ok(idle.hard > 0 && idle.issues.some(i => i.who.includes('PİY AYŞE')), 'piano alone in two lessons leaves students idle and is reported')
 console.log('solver-check ok')
