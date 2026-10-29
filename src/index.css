@@ -278,14 +278,15 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .font-list { display: flex; flex-direction: column; padding: 2px 4px; }
 .menu-pop .font-list button { border: 2px solid transparent; border-radius: 6px; padding: 5px 8px; font-size: 14px; }
 .menu-pop .font-list button.on { border-color: var(--accent); }
-.ts table.dt { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 14px; }
-.ts .dt th { background: #1f4e78; color: #fff; padding: 4px 6px; border: 1px solid #555; }
-.ts .dt td { border: 1px solid #999; padding: 3px 6px; text-align: center; }
+.ts table.dt { width: 100%; border-collapse: collapse; font-size: 11.5px; line-height: 1.25; margin-bottom: 10px; }
+.ts .dt th { background: #1f4e78; color: #fff; padding: 2px 5px; border: 1px solid #555; }
+.ts .dt td { border: 1px solid #999; padding: 1px 5px; text-align: center; }
 .ts .dt td.dd { text-align: left; white-space: nowrap; }
 .ts .dt td.dd span { color: #555; }
 .ts .dt td.sp { color: #777; }
-.ts .dt-title { font-size: 16px; margin: 6px 0; }
-.ts .sig-list td { height: 26px; }
+.ts .dt tr.wk-gap td { height: 6px; padding: 0; border-left: 0; border-right: 0; }
+.ts .dt-title { font-size: 14px; margin: 4px 0; }
+.ts .sig-list td { height: 22px; }
 .ts .signs { display: flex; justify-content: space-between; gap: 40px; margin-top: 10px; break-inside: avoid; }
 .heat-low { background: #63be7b; }
 .heat-mid { background: #ffeb84; }

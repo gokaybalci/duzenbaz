@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   DUTY_ROLES, HOURS_WEIGHTS, adminChoices, MONTHS, MONTHS_ACC, allowsRun, cancelDay, logFill, logTotals, replaceOnLeave, DUTY_SHIFTS, fitsSlot, isDoubleShift, shiftDate, WEEKDAYS, WEEKDAYS_SHORT, buildCsv, buildSheet, currentMonth, dutyDays, dutySlots, fillMonth, hasPlan, heat, monthLabel, monthView,
   roleOf, schoolDays, uncoveredWeeks, schoolYear, shiftMonth, trDate, validDate,
@@ -544,6 +544,8 @@ export function DutyPrintPage() {
   const teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const title = `${p.school.name || t('School')} – ${t('Duty roster')} – ${monthLabel(month)}`
   const ready = slots.length > 0 && v.duty.length > 0 && hasPlan(p, month)
+  const days = dutyDays(p)
+  const rows = v.rows.filter(d => d.special || Object.keys(d.row).length || v.duty.some(x => days.get(x.id)![d.weekday]))
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head no-print">
@@ -565,12 +567,15 @@ export function DutyPrintPage() {
           <table className="dt">
             <thead><tr><th>{t('Date')}</th>{slots.map(s => <th key={s.key}>{s.name}</th>)}{v.admin && <th>{t('Duty administrator')}</th>}</tr></thead>
             <tbody>
-              {v.rows.map(d => (
-                <tr key={d.date}>
-                  <td className="dd">{trDate(d.date)} <span>{WEEKDAYS[d.weekday]}</span></td>
-                  {d.special && !Object.keys(d.row).length ? <td colSpan={slots.length + (v.admin ? 1 : 0)} className="sp"><s>{d.special}</s></td>
-                    : <>{slots.map(s => <td key={s.key}>{teacher.get(d.row[s.key]) ?? ''}</td>)}{v.admin && <td>{teacher.get(d.admin) ?? ''}</td>}</>}
-                </tr>
+              {rows.map((d, i) => (
+                <Fragment key={d.date}>
+                  {i > 0 && d.weekday <= rows[i - 1].weekday && <tr className="wk-gap"><td colSpan={1 + slots.length + (v.admin ? 1 : 0)} /></tr>}
+                  <tr>
+                    <td className="dd">{trDate(d.date)} <span>{WEEKDAYS[d.weekday]}</span></td>
+                    {d.special && !Object.keys(d.row).length ? <td colSpan={slots.length + (v.admin ? 1 : 0)} className="sp"><s>{d.special}</s></td>
+                      : <>{slots.map(s => <td key={s.key}>{teacher.get(d.row[s.key]) ?? ''}</td>)}{v.admin && <td>{teacher.get(d.admin) ?? ''}</td>}</>}
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
