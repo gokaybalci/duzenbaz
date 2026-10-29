@@ -127,6 +127,8 @@ export interface Duty {
   shift: Record<string, DutyShift>
   log: string[]
   hoursWeight: number
+  admin: Record<string, string>
+  hideAdmin: boolean
 }
 
 export type SchoolType = '' | 'ilkokul' | 'ortaokul' | 'lise' | 'guzelsanatlar'
@@ -181,7 +183,7 @@ export function emptyProject(): Project {
     useRooms: false,
     schoolType: '',
     doubleShift: false,
-    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, shift: {}, log: [], hoursWeight: 0 },
+    duty: { places: [], role: {}, days: {}, specials: [], month: '', assign: {}, locked: {}, manual: {}, consecutive: {}, prefer: {}, fixed: {}, shift: {}, log: [], hoursWeight: 0, admin: {}, hideAdmin: false },
   }
 }
 

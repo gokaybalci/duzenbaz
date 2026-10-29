@@ -34,6 +34,11 @@ export const dutyDays = (p: Project, school = schoolDays(p)) =>
 
 export const roleOf = (p: Project, id: string): DutyRole => p.duty.role[id] ?? 'duty'
 
+export const adminChoices = (p: Project) => p.teachers.filter(x => ['dutyAdmin', 'admin'].includes(roleOf(p, x.id)))
+export const showAdmin = (p: Project) => !p.duty.hideAdmin && p.teachers.some(x => roleOf(p, x.id) === 'dutyAdmin')
+export const adminOf = (p: Project, date: string, days = dutyDays(p)) =>
+  p.duty.admin[date] ?? p.teachers.find(x => roleOf(p, x.id) === 'dutyAdmin' && days.get(x.id)![weekdayOf(date)])?.id ?? ''
+
 export const DUTY_SHIFTS: [DutyShift, string][] = [['morning', 'Morning shift'], ['afternoon', 'Afternoon shift']]
 
 // İkili öğretim: every place is staffed in both shifts; afternoon keys end in #o so single-shift keys stay as they were.
@@ -410,6 +415,11 @@ export function logFill(p: Project, month: string) {
   addLog(p, t('{m} distributed: {n} duties, {l} locked kept, {e} empty cells; fewest {min}, most {max} duties per teacher.', { m: monthLabel(month), n: cells, l: locked, e: empty, min: v.min, max: v.max }))
 }
 
+export function logTotals(p: Project) {
+  const c = dutyCounts(p, iso(new Date()))
+  addLog(p, t('Total duties so far: {list}', { list: p.teachers.filter(x => roleOf(p, x.id) === 'duty').map(x => `${x.name} ${c.get(x.id)!.total}`).join(', ') }))
+}
+
 // Snow holiday: the day becomes a special day and its duties no longer count.
 export function cancelDay(p: Project, date: string, name: string) {
   addLog(p, t('{date}: {name}, {n} duties not counted.', { date: trDate(date), name, n: Object.keys(p.duty.assign[date] ?? {}).length }))
@@ -426,23 +436,25 @@ export function monthView(p: Project, month: string) {
   const dates = monthDates(month)
   const counts = dutyCounts(p, dates[dates.length - 1], dates[0])
   const duty = p.teachers.filter(t => roleOf(p, t.id) === 'duty')
-  const rows = dates.map(date => ({ date, weekday: weekdayOf(date), special: specialOn(p, date)?.name, row: p.duty.assign[date] ?? {} }))
+  const signers = p.teachers.filter(t => ['duty', 'preschool'].includes(roleOf(p, t.id)))
+  const days = dutyDays(p), admin = showAdmin(p)
+  const rows = dates.map(date => ({ date, weekday: weekdayOf(date), special: specialOn(p, date)?.name, row: p.duty.assign[date] ?? {}, admin: admin ? adminOf(p, date, days) : '' }))
   const totals = duty.map(t => counts.get(t.id)!.total)
-  return { rows, counts, duty, min: Math.min(...totals), max: Math.max(...totals) }
+  return { rows, counts, duty, signers, admin, min: Math.min(...totals), max: Math.max(...totals) }
 }
 
 export function buildSheet(p: Project, month: string, title: string): Sheet {
   const places = p.duty.places, slots = dutySlots(p), teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const v = monthView(p, month)
-  const width = Math.max(1 + slots.length, places.length + 2)
-  const rows: Cell[][] = [[{ v: title, s: S.Title }], [], [{ v: t('Date'), s: S.Head }, ...slots.map(s => ({ v: s.name, s: S.Head }))]]
+  const cols = slots.length + (v.admin ? 1 : 0), width = Math.max(1 + cols, places.length + 2)
+  const rows: Cell[][] = [[{ v: title, s: S.Title }], [], [{ v: t('Date'), s: S.Head }, ...slots.map(s => ({ v: s.name, s: S.Head })), ...(v.admin ? [{ v: t('Duty administrator'), s: S.Head }] : [])]]
   const merges = [`A1:${ref(width - 1, 0)}`]
   for (const d of v.rows) {
     const label = `${trDate(d.date)} ${WEEKDAYS[d.weekday]}`
     if (d.special && !Object.keys(d.row).length) {
-      rows.push([{ v: label, s: S.Cell }, { v: d.special, s: S.Struck }, ...slots.slice(1).map(() => ({ v: '', s: S.Struck }))])
-      if (slots.length > 1) merges.push(`${ref(1, rows.length - 1)}:${ref(slots.length, rows.length - 1)}`)
-    } else rows.push([{ v: label, s: S.Cell }, ...slots.map(s => ({ v: teacher.get(d.row[s.key]) ?? '', s: S.Center }))])
+      rows.push([{ v: label, s: S.Cell }, { v: d.special, s: S.Struck }, ...Array.from({ length: cols - 1 }, () => ({ v: '', s: S.Struck }))])
+      if (cols > 1) merges.push(`${ref(1, rows.length - 1)}:${ref(cols, rows.length - 1)}`)
+    } else rows.push([{ v: label, s: S.Cell }, ...slots.map(s => ({ v: teacher.get(d.row[s.key]) ?? '', s: S.Center })), ...(v.admin ? [{ v: teacher.get(d.admin) ?? '', s: S.Center }] : [])])
   }
   rows.push([], [{ v: t('DUTY COUNTERS'), s: S.Title }], [{ v: t('Teacher'), s: S.Head }, ...places.map(pl => ({ v: pl.name, s: S.Head })), { v: t('Total duties'), s: S.Head }])
   for (const te of v.duty) {
@@ -450,7 +462,7 @@ export function buildSheet(p: Project, month: string, title: string): Sheet {
     rows.push([{ v: te.name, s: S.Cell }, ...places.map(pl => ({ v: c.places[pl.id] ?? 0, s: S.Center })), { v: c.total, s: h === 'low' ? S.Low : h === 'mid' ? S.Mid : S.High }])
   }
   rows.push([], [{ v: t('NOTIFIED TO'), s: S.Title }], [{ v: '#', s: S.Head }, { v: t('Teacher'), s: S.Head }, { v: t('Signature'), s: S.Head }])
-  v.duty.forEach((te, i) => rows.push([{ v: i + 1, s: S.Center }, { v: te.name, s: S.Cell }, { v: '', s: S.Cell }]))
+  v.signers.forEach((te, i) => rows.push([{ v: i + 1, s: S.Center }, { v: te.name, s: S.Cell }, { v: '', s: S.Cell }]))
   rows.push([], [], [{ v: p.school.vice, s: S.Center }, null, null, { v: p.school.principal, s: S.Center }], [{ v: t('Vice principal'), s: S.Center }, null, null, { v: t('Principal'), s: S.Center }])
   return { name: t('Duty roster'), cols: [26, ...Array(width - 1).fill(20)], rows, merges }
 }
@@ -459,9 +471,11 @@ export function buildCsv(p: Project, month: string): string {
   const places = p.duty.places, slots = dutySlots(p), teacher = new Map(p.teachers.map(x => [x.id, x.name]))
   const v = monthView(p, month)
   const q = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`
-  const lines = [[t('Date'), t('Day'), ...slots.map(s => s.name)].map(q).join(';')]
-  for (const d of v.rows)
-    lines.push([trDate(d.date), WEEKDAYS[d.weekday], ...slots.map(s => (d.special && !Object.keys(d.row).length ? d.special : teacher.get(d.row[s.key]) ?? ''))].map(q).join(';'))
+  const lines = [[t('Date'), t('Day'), ...slots.map(s => s.name), ...(v.admin ? [t('Duty administrator')] : [])].map(q).join(';')]
+  for (const d of v.rows) {
+    const closed = d.special && !Object.keys(d.row).length
+    lines.push([trDate(d.date), WEEKDAYS[d.weekday], ...slots.map(s => (closed ? d.special! : teacher.get(d.row[s.key]) ?? '')), ...(v.admin ? [closed ? '' : teacher.get(d.admin) ?? ''] : [])].map(q).join(';'))
+  }
   lines.push('', [t('Teacher'), ...places.map(pl => pl.name), t('Total duties')].map(q).join(';'))
   for (const te of v.duty) { const c = v.counts.get(te.id)!; lines.push([te.name, ...places.map(pl => c.places[pl.id] ?? 0), c.total].map(q).join(';')) }
   return '\ufeff' + lines.join('\r\n')

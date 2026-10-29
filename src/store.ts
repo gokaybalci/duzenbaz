@@ -144,6 +144,7 @@ export function removeTeacher(d: Draft<Project>, id: string) {
   for (const m of [d.duty.role, d.duty.days, d.duty.manual, d.duty.consecutive, d.duty.prefer, d.duty.fixed, d.duty.shift]) delete m[id]
   for (const [date, row] of Object.entries(d.duty.assign))
     for (const [key, t] of Object.entries(row)) if (t === id) { delete row[key]; delete d.duty.locked[`${date}|${key}`] }
+  for (const [date, t] of Object.entries(d.duty.admin)) if (t === id) delete d.duty.admin[date]
 }
 
 export function prunePlacements(d: Draft<Project>) {

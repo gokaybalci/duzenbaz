@@ -295,14 +295,13 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .month-picker .btn { font-size: 18px; padding: 4px 12px; }
 button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; white-space: nowrap; }
 button.link:hover { text-decoration: underline; }
-.duty-tt { width: auto; }
-.table-wrap:has(> .duty-tt) { width: fit-content; max-width: 100%; padding: 0 24px 12px 0; } /* keep overlay scrollbars off the lock/swap buttons */
+.duty-tt { width: 100%; max-width: 1200px; margin: 0 auto; }
+.table-wrap:has(> .duty-tt) { padding: 0 24px 12px; } /* keep overlay scrollbars off the lock/swap buttons */
 .scroll-box { padding-right: 24px; }
 .duty-tt th.ph { width: 104px; }
 .duty-tt th.ph .menu { float: right; }
 .duty-log { margin: 8px 0 0; padding-left: 18px; font-size: 13px; max-height: 320px; overflow: auto; }
 .duty-tt th.ph .menu-pop { left: 0; right: auto; font-weight: 400; }
-.duty-tt th:not(.ph) { width: 170px; }
 .duty-tt td { height: 44px; }
 .duty-tt td.sp { text-align: center; vertical-align: middle; color: var(--muted); }
 .duty-tt .tcard { cursor: pointer; }

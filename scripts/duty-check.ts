@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { demoProject } from '../src/demo'
-import { cancelDay, dutyCounts, logFill, replaceOnLeave, dutyDays, dutySlots, fitsSlot, substitute, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
+import { adminOf, logTotals, buildCsv, cancelDay, dutyCounts, logFill, replaceOnLeave, dutyDays, dutySlots, fitsSlot, substitute, dutyWeights, fillMonth, monthDates, monthView, schoolDays, shiftDate, uncoveredWeeks, weekdayOf } from '../src/duty'
 import { loadOf } from '../src/timetable'
 import { migrate, removeTeacher } from '../src/store'
 import { S, xlsx } from '../src/xlsx'
@@ -204,6 +204,23 @@ logFill(ds, '2026-10')
 assert.ok(/Ekim 2026 dağıtıldı: \d+ nöbet, \d+ kilitli korundu, 0 boş hücre/.test(ds.duty.log[0]), `the distribution is logged (${ds.duty.log[0]})`)
 for (let i = 0; i < 600; i++) logFill(ds, '2026-10')
 assert.equal(ds.duty.log.length, 500, 'the log keeps the last 500 lines')
+
+logTotals(ds)
+const sofar = dutyCounts(ds, new Date().toISOString().slice(0, 10)).get(ds.teachers[0].id)!.total
+assert.ok(ds.duty.log[0].includes(`Bugüne kadar toplam nöbet: ${ds.teachers[0].name} ${sofar},`), `the totals so far are logged (${ds.duty.log[0].slice(0, 80)})`)
+
+const ad = migrate(demoProject({ classes: 12 })), [a0, a1] = ad.teachers
+ad.duty.role[a0.id] = 'dutyAdmin'; ad.duty.role[a1.id] = 'dutyAdmin'
+ad.duty.days[a0.id] = [true, true, false, false, false, false, false]
+ad.duty.days[a1.id] = [false, false, true, true, true, false, false]
+assert.deepEqual(['2026-10-05', '2026-10-07'].map(d => adminOf(ad, d)), [a0.id, a1.id], 'the duty administrator comes from the ticked days')
+ad.duty.admin['2026-10-07'] = a0.id
+assert.equal(monthView(ad, '2026-10').rows.find(r => r.date === '2026-10-07')!.admin, a0.id, 'a hand-picked administrator wins for that day')
+assert.ok(buildCsv(ad, '2026-10').split('\r\n')[0].includes('Nöbetçi İdareci'), 'the export has the administrator column')
+ad.duty.hideAdmin = true
+assert.ok(!monthView(ad, '2026-10').admin && !buildCsv(ad, '2026-10').includes('Nöbetçi İdareci'), 'and the setting hides it')
+removeTeacher(ad, a0.id)
+assert.ok(!Object.values(ad.duty.admin).includes(a0.id), 'a removed teacher is no longer an administrator')
 
 const file = xlsx({ name: 'Nöbet', cols: [20, 20], rows: [[{ v: 'Başlık', s: S.Title }], [{ v: 'Cumhuriyet Bayramı', s: S.Struck }, { v: 3, s: S.High }]], merges: ['A1:B1'] })
 writeFileSync(process.argv[2] ?? '/dev/null', file)
