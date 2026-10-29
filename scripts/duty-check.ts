@@ -205,9 +205,10 @@ assert.ok(/Ekim 2026 dağıtıldı: \d+ nöbet, \d+ kilitli korundu, 0 boş hüc
 for (let i = 0; i < 600; i++) logFill(ds, '2026-10')
 assert.equal(ds.duty.log.length, 500, 'the log keeps the last 500 lines')
 
+ds.duty.assign['2099-01-05'] = { 'a#0': ds.teachers[0].id }
 logTotals(ds)
-const sofar = dutyCounts(ds, new Date().toISOString().slice(0, 10)).get(ds.teachers[0].id)!.total
-assert.ok(ds.duty.log[0].includes(`Bugüne kadar toplam nöbet: ${ds.teachers[0].name} ${sofar},`), `the totals so far are logged (${ds.duty.log[0].slice(0, 80)})`)
+const sofar = dutyCounts(ds, '2099-01-04').get(ds.teachers[0].id)!.total
+assert.ok(ds.duty.log[0].includes(`Bugüne kadar toplam nöbet: ${ds.teachers[0].name} ${sofar + 1},`), `the totals of every distributed month are logged, later months too (${ds.duty.log[0].slice(0, 80)})`)
 
 const ad = migrate(demoProject({ classes: 12 })), [a0, a1] = ad.teachers
 ad.duty.role[a0.id] = 'dutyAdmin'; ad.duty.role[a1.id] = 'dutyAdmin'

@@ -416,7 +416,7 @@ export function logFill(p: Project, month: string) {
 }
 
 export function logTotals(p: Project) {
-  const c = dutyCounts(p, iso(new Date()))
+  const c = dutyCounts(p, '9999-12-31')
   addLog(p, t('Total duties so far: {list}', { list: p.teachers.filter(x => roleOf(p, x.id) === 'duty').map(x => `${x.name} ${c.get(x.id)!.total}`).join(', ') }))
 }
 
