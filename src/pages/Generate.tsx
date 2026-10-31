@@ -7,6 +7,7 @@ import { evaluate } from '../solver/engine'
 import { defaultWorkers, runSolver, type RunHandle } from '../solver/runner'
 import { getProject, update, useProject } from '../store'
 import { PageTitle, toast } from '../ui'
+import { WeekMap } from './Timetable'
 
 // Project parts the solver reads as hard rules; a result computed from older ones may break them.
 const SOLVER_INPUT = ['lessons', 'teachers', 'classes', 'rooms', 'subjects', 'avail', 'days', 'periods', 'strictClasses', 'useRooms'] as const
@@ -79,7 +80,7 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
         const keepLocked = Object.fromEntries(Object.entries(d.placements).filter(([, v]) => v.locked))
         d.placements = { ...r.placements, ...keepLocked }
       })
-      toast(r.hard === 0 ? t('Timetable ready — no conflicts!') : t('Finished with {n} problems', { n: r.hard }))
+      toast(r.hard === 0 ? t('Timetable ready, no conflicts') : t('Finished with {n} problems', { n: r.hard }))
     }).catch(err => { console.error(err); toast(t('Generator error: {e}', { e: String(err.message ?? err) })) })
       .finally(() => { setRunning(false); handle.current = null })
   }
@@ -123,7 +124,7 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
           </label>
           {!running ? <>
             <button className="btn primary" disabled={!totalCards} onClick={() => start(false)}><Icon n="play" /> {t('Generate')}</button>
-            <button className="btn" disabled={!placedCards} onClick={() => start(true)} title={t('Continue from the current timetable and try to make it better.')}><Icon n="sparkle" /> {t('Improve current')}</button>
+            <button className="btn" disabled={!placedCards} onClick={() => start(true)} title={t('Continue from the current timetable and try to make it better.')}><Icon n="trend" /> {t('Improve current')}</button>
           </> : <button className="btn danger" onClick={() => handle.current?.stop()}><Icon n="stop" /> {t('Stop & keep best')}</button>}
         </div>
         <p className="hint" style={{ margin: 0 }}>
@@ -157,6 +158,7 @@ export function GeneratePage({ goTo }: { goTo: (page: string) => void }) {
             <div className="stat"><b>{shown.stats.classGaps}</b><span>{t('Class gaps')}</span></div>
             <div className="stat"><b>{shown.stats.teacherGaps}</b><span>{t('Teacher gaps')}</span></div>
           </div>
+          <WeekMap p={p} />
           <IssueList issues={shown.issues} days={p.days} periods={p.periods} />
         </div>
       )}

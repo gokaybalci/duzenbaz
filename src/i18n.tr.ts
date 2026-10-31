@@ -121,7 +121,7 @@ export const tr: Record<string, string> = {
   'min': 'dk',
   'moves': 'hamle',
 
-  'Welcome': 'Hoş geldiniz',
+  'Week at a glance': 'Haftaya bakış',
   'Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.':
     'Okulunuzun haftalık ders programını birkaç adımda hazırlayın. Her şey bu tarayıcıda otomatik kaydedilir; yedek almak veya başka bilgisayara taşımak için Dosya → Kaydet kullanın.',
   'Start setting up': 'Kuruluma başla',
@@ -229,7 +229,7 @@ export const tr: Record<string, string> = {
   'Whole class': 'Tüm sınıf',
   'Total hours': 'Toplam saat',
   'Hours / open': 'Saat / açık',
-  'More lesson hours than open slots!': 'Ders saati, açık saatlerden fazla!',
+  'More lesson hours than open slots': 'Ders saati, açık saatlerden fazla',
   '"{name}" is used in {n} lessons. Delete anyway?': '"{name}" {n} tanımlı derste kullanılıyor. Yine de silinsin mi?',
   'Those lessons will be deleted too.': 'Bu dersler de silinecek.',
   'Mark the times this teacher is NOT at school. Lessons will never be placed there.': 'Öğretmenin okulda OLMADIĞI saatleri kapatın. Bu saatlere asla ders yerleştirilmez.',
@@ -304,7 +304,7 @@ export const tr: Record<string, string> = {
   'Class gaps': 'Sınıf boşlukları',
   'Teacher gaps': 'Öğretmen pencereleri',
   'No problems found.': 'Sorun bulunamadı.',
-  'Timetable ready — no conflicts!': 'Program hazır — çakışma yok!',
+  'Timetable ready, no conflicts': 'Program hazır, çakışma yok',
   'Finished with {n} problems': '{n} sorunla tamamlandı',
   'Generator error: {e}': 'Dağıtım hatası: {e}',
   'No possible time slot (availabilities never overlap)': 'Yerleşme olasılığı yok (koşullar hiç örtüşmüyor)',

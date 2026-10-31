@@ -1,6 +1,6 @@
 [package]
 name = "duzenbaz"
-version = "1.5.2"
+version = "1.6.0"
 description = "Düzenbaz okul ders programı hazırlama"
 authors = ["Düzenbaz"]
 license = "GPL-3.0-or-later"

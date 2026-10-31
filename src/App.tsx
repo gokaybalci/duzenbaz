@@ -10,7 +10,7 @@ import { LessonsPage } from './pages/Lessons'
 import { PrintPage } from './pages/Print'
 import { SchoolPage } from './pages/School'
 import { SHEET_CSS } from './pages/Sheets'
-import { TimetablePage } from './pages/Timetable'
+import { TimetablePage, WeekMap } from './pages/Timetable'
 import { native } from './native'
 import { isDprg, readDprg } from './dprg'
 import { zip } from './xlsx'
@@ -355,19 +355,20 @@ function StartPage({ go, openFile, openDemo }: { go: (p: Page) => void; openFile
   const doneCount = steps.slice(0, -1).filter(x => x[3]).length
   const next = Math.max(0, steps.findIndex(x => !x[3]))
   return (
-    <div className="stack narrow" style={{ gap: 16 }}>
+    <div className="stack" style={{ gap: 16 }}>
       <div className="page-head">
-        <PageTitle title={t('Welcome')} sub={native ? t('Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.') : t('Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.')} />
+        <PageTitle title={t('Start')} sub={native ? t('Build weekly timetables for your school in a few steps. Your data never leaves this computer: it is kept in your user profile and saved only to files you choose with File → Save.') : t('Build weekly timetables for your school in a few steps. Everything is saved automatically in this browser; use File → Save to keep a copy or move it to another computer.')} />
       </div>
       <div className="row">
         <button className="btn primary" onClick={() => go(steps[next][0])}>{doneCount ? t('Continue: {step}', { step: t(steps[next][1]) }) : t('Start setting up')} <Icon n="right" /></button>
         <button className="btn" onClick={openFile}><Icon n="open" /> {t('Open a file')}</button>
         <button className="btn" onClick={openDemo}><Icon n="cap" /> {t('Try the demo school')}</button>
       </div>
+      <div className="start-grid">
       <div className="card">
         <div className="steps-head">
           <b>{t('{n} of {m} steps done', { n: doneCount, m: steps.length - 1 })}</b>
-          <div className="progress"><div style={{ width: `${(doneCount / (steps.length - 1)) * 100}%` }} /></div>
+          <div className="ticks">{steps.slice(0, -1).map(x => <i key={x[0]} className={x[3] ? 'on' : ''} />)}</div>
         </div>
         {steps.map(([pg, title, desc, done], i) => (
           <button key={pg} className={`step ${done ? 'done' : ''} ${i === next ? 'next' : ''}`} onClick={() => go(pg)}>
@@ -377,6 +378,11 @@ function StartPage({ go, openFile, openDemo }: { go: (p: Page) => void; openFile
             <Icon n="right" />
           </button>
         ))}
+      </div>
+      <div className="card start-week">
+        <h3>{t('Week at a glance')}</h3>
+        <WeekMap p={p} />
+      </div>
       </div>
     </div>
   )

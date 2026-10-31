@@ -201,7 +201,7 @@ export function EntitiesPage({ entity }: { entity: EntityKey }) {
                       </td>
                     )}
                     <td className="num">
-                      {entity === 'subjects' ? h : <span className={`badge ${h > open ? 'bad' : h === 0 ? '' : 'ok'}`} title={h > open ? t('More lesson hours than open slots!') : ''}>{h} / {open}</span>}
+                      {entity === 'subjects' ? h : <span className={`badge ${h > open ? 'bad' : h === 0 ? '' : 'ok'}`} title={h > open ? t('More lesson hours than open slots') : ''}>{h} / {open}</span>}
                     </td>
                     <td><button className="btn ghost small danger" onClick={() => remove(e)} title={t('Delete')}><Icon n="trash" /></button></td>
                   </tr>

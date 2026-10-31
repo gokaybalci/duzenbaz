@@ -117,7 +117,7 @@ export function TimetablePage() {
                 const c = clashCount(k, e.id)
                 return (
                   <button key={e.id} className={e.id === id ? 'active' : ''} onClick={() => setSel({ ...sel, [k]: e.id })}>
-                    <span className="dot" style={{ background: e.color }} />{e.name}
+                    <span className="dot" style={{ background: e.color }} /><span className="name" title={e.name}>{e.name}</span>
                     {c > 0 && <span className="meta"><span className="badge bad">{c}</span></span>}
                   </button>
                 )
@@ -156,6 +156,32 @@ export function TimetablePage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+export function WeekMap({ p }: { p: Project }) {
+  const idx = useMemo(() => buildIndex(p), [p])
+  const n = useMemo(() => names(p), [p])
+  const D = p.days.length, P = p.periods.length
+  const rows = p.classes.length ? p.classes : Array.from({ length: 6 }, (_, i) => ({ id: String(i), short: '', avail: '' }))
+  return (
+    <div className="week-map" role="img" aria-label={t('Week at a glance')} style={{ '--days': D, '--periods': P } as React.CSSProperties}>
+      <div className="wm-row"><span />{p.days.map((d, i) => <span key={i} className="wm-label">{d.slice(0, 3)}</span>)}</div>
+      {rows.map(c => (
+        <div key={c.id} className="wm-row">
+          <span className="wm-label">{c.short}</span>
+          {p.days.map((_, d) => (
+            <div key={d} className="wm-day">
+              {p.periods.map((_, pp) => {
+                const s = d * P + pp
+                const lesson = idx.grids.class.get(c.id)?.[s]?.[0]?.lesson
+                return <i key={pp} className={c.avail[s] === '0' || p.avail[s] === '0' ? 'shut' : ''} style={lesson ? { background: n.subject.get(lesson.subjectId)?.color } : undefined} />
+              })}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }

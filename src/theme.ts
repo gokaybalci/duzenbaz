@@ -2,12 +2,12 @@ import { useSyncExternalStore } from 'react'
 import { native } from './native'
 
 export const THEMES = [
-  { id: 'light', name: 'Light', side: '#eceff3', main: '#f6f7f9', accent: '#2f6fed' },
-  { id: 'cream', name: 'Cream', side: '#ebe2d1', main: '#f4eee2', accent: '#a65a1b' },
-  { id: 'green', name: 'Green', side: '#e1ebe4', main: '#edf4ef', accent: '#1d7348' },
-  { id: 'blue', name: 'Navy', side: '#e1e7f2', main: '#edf1f8', accent: '#1c3d8f' },
+  { id: 'light', name: 'Light', side: '#f4f4f2', main: '#f8f8f7', accent: '#0d7377' },
+  { id: 'cream', name: 'Cream', side: '#efe8da', main: '#f6f1e7', accent: '#9a5216' },
+  { id: 'green', name: 'Green', side: '#e8f0ea', main: '#f1f6f2', accent: '#1a6c43' },
+  { id: 'blue', name: 'Navy', side: '#e8edf5', main: '#f1f4f9', accent: '#1c3d8f' },
   { id: 'contrast', name: 'High contrast', side: '#ffffff', main: '#ffffff', accent: '#000000' },
-  { id: 'dark', name: 'Dark', side: '#101216', main: '#14171c', accent: '#5b8ef5' },
+  { id: 'dark', name: 'Dark', side: '#0f0f10', main: '#141415', accent: '#4fb8b2' },
 ] as const
 type ThemeId = (typeof THEMES)[number]['id']
 
@@ -18,7 +18,7 @@ export const TEXT_SIZES = [
 ] as const
 
 export const FONTS = [
-  { id: 'standard', name: 'Standard', stack: "'Source Sans 3 Variable', 'Segoe UI', 'Noto Sans', Ubuntu, Cantarell, 'DejaVu Sans', system-ui, sans-serif" },
+  { id: 'standard', name: 'Standard', stack: "'Instrument Sans Variable', 'Segoe UI', 'Noto Sans', Ubuntu, Cantarell, 'DejaVu Sans', system-ui, sans-serif" },
   { id: 'readable', name: 'Readable (wide)', stack: "Verdana, Tahoma, 'DejaVu Sans', 'Bitstream Vera Sans', sans-serif" },
   { id: 'office', name: 'Office', stack: "Calibri, Carlito, 'Segoe UI', 'Noto Sans', sans-serif" },
   { id: 'plain', name: 'Plain', stack: "Arial, 'Liberation Sans', Helvetica, 'Nimbus Sans', sans-serif" },
@@ -26,6 +26,7 @@ export const FONTS = [
 ] as const
 type FontId = (typeof FONTS)[number]['id']
 
+const SHEET_FONT = "'Source Sans 3 Variable', 'Segoe UI', 'Noto Sans', Ubuntu, Cantarell, 'DejaVu Sans', system-ui, sans-serif"
 const KEY = 'duzenbaz.appearance'
 let state: { theme: ThemeId; scale: number; font: FontId } = { theme: 'light', scale: 1, font: 'standard' }
 try {
@@ -35,14 +36,32 @@ try {
   if (FONTS.some(f => f.id === v.font)) state.font = v.font
 } catch {}
 const listeners = new Set<() => void>()
+const FIT_WIDTH = 1360
+const MIN_FIT = 0.8
+let webviewZoom = 1
+let fitWidth = 0
 
 function apply() {
   document.documentElement.dataset.theme = state.theme
-  document.documentElement.style.setProperty('--font', FONTS.find(f => f.id === state.font)!.stack)
-  if (native) native.setZoom(state.scale).catch(() => { document.documentElement.style.zoom = String(state.scale) })
-  else document.documentElement.style.zoom = String(state.scale)
+  const stack = FONTS.find(f => f.id === state.font)!.stack
+  document.documentElement.style.setProperty('--font', stack)
+  document.documentElement.style.setProperty('--sheet-font', state.font === 'standard' ? SHEET_FONT : stack)
+  applyZoom()
+}
+
+function applyZoom() {
+  fitWidth = window.innerWidth * webviewZoom
+  const zoom = Math.round(state.scale * Math.max(MIN_FIT, Math.min(1, fitWidth / FIT_WIDTH)) * 100) / 100
+  const cssZoom = () => {
+    document.documentElement.style.zoom = String(zoom)
+    document.documentElement.style.setProperty('--css-zoom', String(zoom))
+  }
+  if (!native) return cssZoom()
+  webviewZoom = zoom
+  native.setZoom(zoom).catch(() => { webviewZoom = 1; cssZoom() })
 }
 apply()
+window.addEventListener('resize', () => { if (Math.abs(window.innerWidth * webviewZoom - fitWidth) >= 4) applyZoom() })
 
 export function setAppearance(next: Partial<typeof state>) {
   state = { ...state, ...next }

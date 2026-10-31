@@ -22,7 +22,7 @@ const P: Record<string, string> = {
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   play: 'M7 4v16l13-8L7 4z',
   stop: 'M6 6h12v12H6z',
-  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z',
+  trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   download: 'M12 3v12M7 10l5 5 5-5M4 21h16',
   undo: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
@@ -44,7 +44,7 @@ export type IconName = keyof typeof P
 export function Icon({ n, size = 16, className }: { n: IconName; size?: number; className?: string }) {
   return (
     <svg className={`icon ${className ?? ''}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={P[n]} />
     </svg>
   )

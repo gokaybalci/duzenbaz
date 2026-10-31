@@ -13,7 +13,7 @@ export function PageTitle({ title, count, sub }: { title: ReactNode; count?: Rea
   )
 }
 
-export function Empty({ icon = 'sparkle', children, action }: { icon?: IconName; children: ReactNode; action?: ReactNode }) {
+export function Empty({ icon = 'file', children, action }: { icon?: IconName; children: ReactNode; action?: ReactNode }) {
   return <div className="empty"><Icon n={icon} size={26} /><p>{children}</p>{action}</div>
 }
 

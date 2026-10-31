@@ -121,6 +121,7 @@ export function DutyTeachersPage() {
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head">
         <PageTitle title={t('Teachers')} count={p.teachers.length} sub={<>{t('Ticked days come from the timetable (the days a teacher has lessons, or before distributing, the open days of their availability). Duty can be given on every ticked day. Only teachers marked "On duty" get duties. Click a name to see its duty statistics. Preferred days are used whenever possible; with Back-to-back duty unticked, a teacher never gets duty on two days in a row.')} {t('A teacher with a fixed place only gets duty at that place.')}</>} />
+        <div style={{ flexBasis: '100%' }} />
         <span className="hint">{t('Back-to-back duty')}:</span>
         <button className="btn small" onClick={() => update(d => { d.duty.consecutive = {} })}><Icon n="check" /> {t('Tick all')}</button>
         <button className="btn small" onClick={() => update(d => { d.duty.consecutive = Object.fromEntries(d.teachers.map(x => [x.id, false])) })}><Icon n="x" /> {t('Untick all')}</button>
@@ -129,7 +130,7 @@ export function DutyTeachersPage() {
         </button>
       </div>
       <div className="card pad row">
-        <input placeholder={t('New teacher name…')} value={name} style={{ flex: 1, maxWidth: 360 }}
+        <input placeholder={t('New teacher name…')} value={name} style={{ flex: 1, minWidth: 240, maxWidth: 360 }}
           onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
         <button className="btn primary" disabled={!name.trim()} onClick={add}>+ {t('Add teacher')}</button>
         <button className="btn" onClick={() => setPasting(true)}>{t('Paste list')}</button>
@@ -137,7 +138,7 @@ export function DutyTeachersPage() {
       </div>
       {p.teachers.length > 0 && (
         <div className="card table-wrap">
-          <table className="data">
+          <table className="data tight">
             <thead><tr><th>{t('Teacher')}</th><th>{t('Role')}</th>{WEEKDAYS_SHORT.map((d, i) => <th key={i} style={{ textAlign: 'center' }} title={WEEKDAYS[i]}>{d}</th>)}<th>{t('Duty preference')}</th>{isDoubleShift(p) && <th>{t('Shift')}</th>}{p.duty.places.length > 0 && <th>{t('Fixed place')}</th>}<th className="num">{t('Lesson hours')}</th><th style={{ textAlign: 'center' }}>{t('Back-to-back duty')}</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
               {p.teachers.map(te => {
@@ -159,9 +160,10 @@ export function DutyTeachersPage() {
                     <td>
                       <div className="pref-days">
                         {WEEKDAYS_SHORT.map((w, i) => {
-                          const pick = !!p.duty.prefer[te.id]?.[i] && on[i]
+                          if (!on[i]) return null
+                          const pick = !!p.duty.prefer[te.id]?.[i]
                           return (
-                            <button key={i} className={pick ? 'on' : ''} disabled={!on[i]} aria-pressed={pick} title={WEEKDAYS[i]}
+                            <button key={i} className={pick ? 'on' : ''} aria-pressed={pick} title={WEEKDAYS[i]}
                               onClick={() => update(d => { const a = WEEKDAYS.map((_, k) => !!d.duty.prefer[te.id]?.[k] && on[k]); a[i] = !pick; d.duty.prefer[te.id] = a })}>{w}</button>
                           )
                         })}
